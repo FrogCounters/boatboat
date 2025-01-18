@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Vec2D } from "./game/util";
+import { WS_URL } from "./config";
+import SimplePeer from "simple-peer";
 
 const Button = () => {
   return (
@@ -35,13 +37,16 @@ const Joystick = () => {
 
   const onTouchStart = (touchEvent: TouchEvent) => {
     touchEvent.preventDefault();
-    anchorPosRef.current!.x = touchEvent.touches[0].clientX
+    anchorPosRef.current!.x = touchEvent.touches[0].clientX;
     anchorPosRef.current!.y = touchEvent.touches[0].clientY;
-  }
-  
+  };
+
   const onTouchMove = (touchEvent: TouchEvent) => {
     touchEvent.preventDefault();
-    const endPos = new Vec2D(touchEvent.touches[0].clientX, touchEvent.touches[0].clientY);
+    const endPos = new Vec2D(
+      touchEvent.touches[0].clientX,
+      touchEvent.touches[0].clientY
+    );
     let delta = endPos.subtract(anchorPosRef.current!);
     if (delta.magnitude() > 50) {
       delta = delta.normalize().multiply(50);
@@ -50,7 +55,7 @@ const Joystick = () => {
     joystickPosRef.current!.x = 125 + delta.x;
     joystickPosRef.current!.y = 125 + delta.y;
     draw();
-  }
+  };
 
   const onTouchEnd = (touchEvent: TouchEvent) => {
     touchEvent.preventDefault();
@@ -59,7 +64,7 @@ const Joystick = () => {
     joystickPosRef.current!.x = 125;
     joystickPosRef.current!.y = 125;
     draw();
-  }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -75,15 +80,62 @@ const Joystick = () => {
     };
   }, []);
 
-
-  return (
-    <canvas ref={canvasRef} width={250} height={250}></canvas>
-  );
-}
+  return <canvas ref={canvasRef} width={250} height={250}></canvas>;
+};
 
 const Join = () => {
   const [searchParams] = useSearchParams();
   const shipId = searchParams.get("shipId");
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
+
+  useEffect(() => {
+    if (!shipId) return;
+    const ws_ = new WebSocket(`${WS_URL}/joinship?ship_id=${shipId}`);
+    const peer = new SimplePeer({
+      initiator: false,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun.nextcloud.com:443" },
+        ],
+      },
+    });
+    peer.on("signal", (data) => {
+      ws_.send(JSON.stringify({ type: "signal", data }));
+    });
+    peer.on("connect", () => {
+      // TODO: connected
+      console.log("Connected to peer");
+    });
+    peer.on("close", () => {
+      peer.destroy();
+      setPeer(null);
+      // TODO: disconnected
+    });
+    setPeer(peer);
+
+    ws_.onopen = () => {
+      setWs(ws_);
+      ws_.send(JSON.stringify({ type: "ready" }));
+    };
+    ws_.onmessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "player_communication") {
+        peer.signal(message.data);
+      } else {
+        console.log("Unknown message type", message)
+      }
+    };
+    ws_.onclose = () => {
+      setWs(null);
+    };
+
+    return () => {
+      ws_.close();
+    };
+  }, [shipId]);
+
   return (
     <main className="w-screen h-screen bg-gray-400 p-4">
       <div className="w-full h-full bg-gray-800 flex flex-col justify-around">

@@ -9,6 +9,7 @@ from datetime import datetime
 import uuid
 from enum import Enum
 import math
+from config import *
 
 app = FastAPI()
 
@@ -19,6 +20,7 @@ class Position(Enum):
     CANNON_LEFT_2 = "cannon_left_2"
     CANNON_RIGHT_1 = "cannon_right_1"
     CANNON_RIGHT_2 = "cannon_right_2"
+    FREE = "free"
 
 @dataclass
 class Player:
@@ -32,11 +34,20 @@ class Ship:
     position: dict  # {x: float, y: float}
     velocity: dict  # {x: float, y: float}
     players: Dict[str, Player]  # player_id -> Player
-    health: int = 100 # Tmp initial health of player
+    health: int = SHIP_TOTAL_HP # Tmp initial health of player
     score: int = 0
     last_update: float = 0 # timestamp
 
     def add_player(self, player_id: str, position: Position) -> bool:
+        # If position is FREE, allow multiple players
+        if position == Position.FREE:
+            self.players[player_id] = Player(
+                id=player_id,
+                position=position,
+                relative_pos={"x": 0, "y": 0}  # Assume FREE position in the middle of the boat
+            )
+            return True
+        
         # Check if position is already taken
         if any(p.position == position for p in self.players.values()):
             return False
@@ -48,7 +59,6 @@ class Ship:
             Position.CANNON_LEFT_2: {"x": -20, "y": -10},  # Left side back
             Position.CANNON_RIGHT_1: {"x": 20, "y": 10},  # Right side front
             Position.CANNON_RIGHT_2: {"x": 20, "y": -10},  # Right side back
-
         }
         
         self.players[player_id] = Player(
@@ -63,24 +73,32 @@ class Ship:
             del self.players[player_id]
 
     def move_player(self, player_id: str, new_position: Position) -> bool:
+        if player_id not in self.players:
+            return False
+
+        # If moving to FREE, always allow
+        if new_position == Position.FREE:
+            current_player = self.players[player_id]
+            current_player.position = new_position
+            current_player.relative_pos = {"x": 0, "y": 0}
+            return True
+        
         # Check if new position is available
         if any(p.position == new_position for p in self.players.values()):
             return False
             
-        if player_id in self.players:
-            current_player = self.players[player_id]
-            current_player.position = new_position
-            # Update relative position
-            relative_positions = {
-                Position.HELM: {"x": 0, "y": 0},
-                Position.CANNON_LEFT_1: {"x": -20, "y": 10},
-                Position.CANNON_LEFT_2: {"x": -20, "y": -10},
-                Position.CANNON_RIGHT_1: {"x": 20, "y": 10},
-                Position.CANNON_RIGHT_2: {"x": 20, "y": -10},
-            }
-            current_player.relative_pos = relative_positions[new_position]
-            return True
-        return False
+        current_player = self.players[player_id]
+        current_player.position = new_position
+        # Update relative position
+        relative_positions = {
+            Position.HELM: {"x": 0, "y": 0},
+            Position.CANNON_LEFT_1: {"x": -20, "y": 10},
+            Position.CANNON_LEFT_2: {"x": -20, "y": -10},
+            Position.CANNON_RIGHT_1: {"x": 20, "y": 10},
+            Position.CANNON_RIGHT_2: {"x": 20, "y": -10},
+        }
+        current_player.relative_pos = relative_positions[new_position]
+        return True
 
 @dataclass
 class Bullet:
@@ -188,6 +206,89 @@ player_ship_mapping: Dict[str, str] = {}
 player_connections: Dict[str, WebSocket] = {}
 
 
+def line_circle_intersection(line_start, line_dir, circle_center, radius):
+    """
+    Checks if a line intersects a circle and returns the intersection distance if any.
+    Args:
+    - line_start: {x, y} origin of the line
+    - line_dir: {x, y} normalized direction of the line
+    - circle_center: {x, y} center of the circle
+    - radius: float, radius of the circle
+    
+    Returns:
+    - The distance to the closest intersection point or None if no intersection.
+    """
+    # Vector from line_start to circle_center
+    oc = {
+        "x": circle_center["x"] - line_start["x"],
+        "y": circle_center["y"] - line_start["y"]
+    }
+    
+    # Project oc onto the line direction
+    t_closest = oc["x"] * line_dir["x"] + oc["y"] * line_dir["y"]
+    
+    # Closest point on the line to the circle's center
+    closest_point = {
+        "x": line_start["x"] + t_closest * line_dir["x"],
+        "y": line_start["y"] + t_closest * line_dir["y"]
+    }
+    
+    # Distance from closest point to the circle center
+    dist_to_center = math.sqrt(
+        (closest_point["x"] - circle_center["x"]) ** 2 +
+        (closest_point["y"] - circle_center["y"]) ** 2
+    )
+    
+    # Check if the circle is hit
+    if dist_to_center > radius:
+        return None  # No intersection
+    
+    # Compute distance to the intersection point(s)
+    offset = math.sqrt(radius**2 - dist_to_center**2)
+    t1 = t_closest - offset
+    t2 = t_closest + offset
+    
+    # Return the closest positive intersection point
+    if t1 >= 0:
+        return t1
+    elif t2 >= 0:
+        return t2
+    else:
+        return None
+
+def detect_closest_hit(bullet, ships, radius):
+    """
+    Detects the closest ship hit by a bullet.
+    Args:
+    - bullet: {position, angle} dictionary representing the bullet.
+    - ships: Dictionary of ships with their positions.
+    - radius: Radius of the ships' hitboxes.
+    
+    Returns:
+    - The closest ship hit, if any.
+    """
+    bullet_pos = bullet.position
+    bullet_dir = {
+        "x": math.cos(bullet.angle),
+        "y": math.sin(bullet.angle)
+    }
+    closest_ship = None
+    closest_distance = float("inf")
+    
+    for ship_id, ship in ships.items():
+        if ship_id == bullet.ship_id:
+            continue  # Ignore the firing ship
+        
+        intersection_distance = line_circle_intersection(
+            bullet_pos, bullet_dir, ship.position, radius
+        )
+        
+        if intersection_distance is not None and intersection_distance < closest_distance:
+            closest_distance = intersection_distance
+            closest_ship = ship
+    
+    return closest_ship
+
 @app.websocket("/joinship")
 async def join_ship_websocket(websocket: WebSocket, ship_id: str):
     """
@@ -265,28 +366,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif message["type"] == "bullet_update":
                 bullet = game_state.add_bullet(message["data"], ship_id)
+                radius = SHIP_HITBOX_RADIUS_UNITS #TODO: Tmp Variable here
                 
                 # Check for collisions (simplified for now)
-                bullet_pos = bullet.position
-                for other_ship in game_state.ships.values():
-                    if other_ship.id != ship_id:
-                        # Simple circular collision detection
-                        ship_pos = other_ship.position
-                        dx = bullet_pos["x"] - ship_pos["x"]
-                        dy = bullet_pos["y"] - ship_pos["y"]
-                        distance = (dx * dx + dy * dy) ** 0.5
+                closest_ship = detect_closest_hit(bullet, game_state.ships, radius)
 
-                        # TODO: FIX, assume dx cannot be 0 here since "collision" cannot theoretically happen
-                        bullet_angle = math.atan2(dy, dx)
+                if closest_ship:
+                    closest_ship.health -= CANNONT_HIT_DMG
+                    game_state.ships[ship_id].score += 1
+                    del game_state.bullets[bullet.id]
 
-                        # TODO: FIX, Temporary Collision radius and no leeway for angle
-                        if distance < 50 and bullet_angle == bullet.angle:  
-                            other_ship.health -= 10
-                            game_state.ships[ship_id].score += 1
-                            del game_state.bullets[bullet.id]
-                            break
 
             elif message["type"] == "player_communication":
+                print(message)
                 # Forward message to specific player
                 if "player_id" in message:
                     player_id = message["player_id"]
