@@ -109,7 +109,7 @@ function App() {
     }
 
     // Add current player to the ship
-    // game.initPlayer(shipId, uid);
+    game.initPlayer(shipId, uid);
 
     // Center map on the ship
     game.centerMapOnShip(shipId);
