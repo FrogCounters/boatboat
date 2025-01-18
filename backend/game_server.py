@@ -19,6 +19,7 @@ class Position(Enum):
     CANNON_LEFT_2 = "cannon_left_2"
     CANNON_RIGHT_1 = "cannon_right_1"
     CANNON_RIGHT_2 = "cannon_right_2"
+    FREE = "free"
 
 @dataclass
 class Player:
@@ -37,6 +38,15 @@ class Ship:
     last_update: float = 0 # timestamp
 
     def add_player(self, player_id: str, position: Position) -> bool:
+        # If position is FREE, allow multiple players
+        if position == Position.FREE:
+            self.players[player_id] = Player(
+                id=player_id,
+                position=position,
+                relative_pos={"x": 0, "y": 0}  # Assume FREE position in the middle of the boat
+            )
+            return True
+        
         # Check if position is already taken
         if any(p.position == position for p in self.players.values()):
             return False
@@ -48,7 +58,6 @@ class Ship:
             Position.CANNON_LEFT_2: {"x": -20, "y": -10},  # Left side back
             Position.CANNON_RIGHT_1: {"x": 20, "y": 10},  # Right side front
             Position.CANNON_RIGHT_2: {"x": 20, "y": -10},  # Right side back
-
         }
         
         self.players[player_id] = Player(
@@ -63,24 +72,32 @@ class Ship:
             del self.players[player_id]
 
     def move_player(self, player_id: str, new_position: Position) -> bool:
+        if player_id not in self.players:
+            return False
+
+        # If moving to FREE, always allow
+        if new_position == Position.FREE:
+            current_player = self.players[player_id]
+            current_player.position = new_position
+            current_player.relative_pos = {"x": 0, "y": 0}
+            return True
+        
         # Check if new position is available
         if any(p.position == new_position for p in self.players.values()):
             return False
             
-        if player_id in self.players:
-            current_player = self.players[player_id]
-            current_player.position = new_position
-            # Update relative position
-            relative_positions = {
-                Position.HELM: {"x": 0, "y": 0},
-                Position.CANNON_LEFT_1: {"x": -20, "y": 10},
-                Position.CANNON_LEFT_2: {"x": -20, "y": -10},
-                Position.CANNON_RIGHT_1: {"x": 20, "y": 10},
-                Position.CANNON_RIGHT_2: {"x": 20, "y": -10},
-            }
-            current_player.relative_pos = relative_positions[new_position]
-            return True
-        return False
+        current_player = self.players[player_id]
+        current_player.position = new_position
+        # Update relative position
+        relative_positions = {
+            Position.HELM: {"x": 0, "y": 0},
+            Position.CANNON_LEFT_1: {"x": -20, "y": 10},
+            Position.CANNON_LEFT_2: {"x": -20, "y": -10},
+            Position.CANNON_RIGHT_1: {"x": 20, "y": 10},
+            Position.CANNON_RIGHT_2: {"x": 20, "y": -10},
+        }
+        current_player.relative_pos = relative_positions[new_position]
+        return True
 
 @dataclass
 class Bullet:
