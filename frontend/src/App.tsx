@@ -16,7 +16,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
 
-  const uid = "6";
+  const uid = "6"; // Current player's unique ID
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,22 +25,29 @@ function App() {
     const game = new Game(canvas);
     gameRef.current = game;
 
-    const shipId = 1;
-    const shipPosition = { x: 200, y: 200 };
-
+    const shipId = "1";
+    const shipPosition = { x: 1000, y: 200, angle: 0 };
     game.initShip(shipId, shipPosition);
 
-    for (let i = 0; i < 50; i++) {
+    // Add obstacles
+    for (let i = 0; i < 200; i++) {
       game.initObstacle({
-        x: Math.random() * 1280,
-        y: Math.random() * 720,
+        x: Math.random() * 5000,
+        y: Math.random() * 5000,
       });
     }
+
+    // Add current player to the ship
     game.initPlayer(shipId, uid);
 
+    // Center map on the ship
     game.centerMapOnShip(shipId);
 
-    game.draw();
+    game.gameStart();
+
+    return () => {
+      game.stopGame();
+    };
   }, []);
 
   return (
@@ -49,12 +56,13 @@ function App() {
         <div className="box-border h-32 w-32 p-4 border-4">QR here</div>
         <HealthBar health={20} />
       </div>
-      <div className="relative mt-5 relative">
+      <div className="relative mt-5">
         <canvas
           ref={canvasRef}
-          className="bg-blue-200 w-full"
+          className="bg-blue-200"
           width={1280}
           height={720}
+          style={{ width: "auto", height: "600px" }}
         />
         <div className="absolute top-1 right-1 opacity-70 bg-transparent">
           <Leaderboard users={users} uid={uid} />
