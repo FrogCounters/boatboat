@@ -9,6 +9,7 @@ from datetime import datetime
 import uuid
 from enum import Enum
 import math
+from config import *
 
 app = FastAPI()
 
@@ -33,7 +34,7 @@ class Ship:
     position: dict  # {x: float, y: float}
     velocity: dict  # {x: float, y: float}
     players: Dict[str, Player]  # player_id -> Player
-    health: int = 100 # Tmp initial health of player
+    health: int = SHIP_TOTAL_HP # Tmp initial health of player
     score: int = 0
     last_update: float = 0 # timestamp
 
@@ -365,13 +366,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif message["type"] == "bullet_update":
                 bullet = game_state.add_bullet(message["data"], ship_id)
-                radius = 10 #TODO: Tmp Variable here
+                radius = SHIP_HITBOX_RADIUS_UNITS #TODO: Tmp Variable here
                 
                 # Check for collisions (simplified for now)
                 closest_ship = detect_closest_hit(bullet, game_state.ships, radius)
 
                 if closest_ship:
-                    closest_ship.health -= 10
+                    closest_ship.health -= CANNONT_HIT_DMG
                     game_state.ships[ship_id].score += 1
                     del game_state.bullets[bullet.id]
 
