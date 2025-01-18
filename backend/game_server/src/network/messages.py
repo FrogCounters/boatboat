@@ -2,6 +2,7 @@ from typing import Dict, Any
 from ..core.game_state import GameState
 from ..core.collision import check_collision
 from ..models.enums import Position
+import json
 
 async def handle_message(
     message: Dict[str, Any],
