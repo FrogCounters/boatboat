@@ -13,15 +13,16 @@ class Person {
   ) {}
 
   update(delta: number, maxSpeed: number) {
+    this.position = this.position.add(this.velocity.multiply(delta));
     this.velocity = this.velocity.add(this.acceleration.multiply(delta));
 
     this.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, this.velocity.x));
     this.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, this.velocity.y));
 
-    if (this.ship) {
+    /*if (this.ship) {
       this.position.x = this.ship.position.x;
       this.position.y = this.ship.position.y;
-    }
+    }*/
   }
 
   draw(

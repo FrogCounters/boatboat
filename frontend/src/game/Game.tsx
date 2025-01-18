@@ -1,14 +1,16 @@
-import { Vec2D } from "./util";
+import { Vec2D, Controller } from "./util";
 import Ship from "./Ship";
 import Player from "./Player";
 
 class Game {
   private context: CanvasRenderingContext2D | null;
 
+  private shipId: string;
   private ships: Map<string, Ship> = new Map();
   private players: Map<string, Player> = new Map();
   private obstacles: Vec2D[] = [];
   private canvas: HTMLCanvasElement;
+  private controllers: Map<string, Controller>;
 
   private mapCoordinates = { x: 0, y: 0 };
   private viewportWidth = 1280;
@@ -21,8 +23,10 @@ class Game {
   private deceleration = 50;
   private maxSpeed = 200;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, shipId: string, controllers: Map<string, Controller>) {
     this.canvas = canvas;
+    this.shipId = shipId;
+    this.controllers = controllers;
     this.context = canvas.getContext("2d");
     if (!this.context) {
       throw new Error("Failed to get canvas context");
@@ -32,8 +36,8 @@ class Game {
     window.addEventListener("keyup", this.handleKeyUp);
   }
 
-  initShip(shipId: string, position: Vec2D) {
-    this.ships.set(shipId, new Ship(shipId, position));
+  initShip(shipId: string, position: Vec2D, controllers: Map<string, Controller> = new Map(), players: Map<string, Player> = new Map()) {
+    this.ships.set(shipId, new Ship(shipId, position, controllers, players));
   }
 
   initObstacle(position: Vec2D) {
@@ -55,8 +59,8 @@ class Game {
   }
 
   handleKeyDown = (event: KeyboardEvent) => {
-    const shipId = "1"; // Assume controlling ship with ID 1
-    const ship = this.ships.get(shipId);
+    event.preventDefault();
+    const ship = this.ships.get(this.shipId);
 
     if (ship) {
       switch (event.key) {
@@ -79,8 +83,8 @@ class Game {
   };
 
   handleKeyUp = (event: KeyboardEvent) => {
-    const shipId = "1";
-    const ship = this.ships.get(shipId);
+    event.preventDefault();
+    const ship = this.ships.get(this.shipId);
 
     if (ship) {
       switch (event.key) {
@@ -126,9 +130,7 @@ class Game {
       ship.update(delta, this.maxSpeed);
 
       // Recenter map on the ship being controlled
-      if (shipId === "1") {
-        this.centerMapOnShip(shipId);
-      }
+      this.centerMapOnShip(this.shipId);
     });
   }
 
@@ -176,11 +178,11 @@ class Game {
         `Map Coordinates: x: ${this.mapCoordinates.x}, y: ${
           this.mapCoordinates.y
         }\n
-          Acceleration: ${this.ships.get("1")?.acceleration.x}, ${
-          this.ships.get("1")?.acceleration.y
+          Acceleration: ${this.ships.get(this.shipId)?.acceleration.x}, ${
+          this.ships.get(this.shipId)?.acceleration.y
         }\n
-          Velocity: ${this.ships.get("1")?.velocity.x}, ${
-          this.ships.get("1")?.velocity.y
+          Velocity: ${this.ships.get(this.shipId)?.velocity.x}, ${
+          this.ships.get(this.shipId)?.velocity.y
         }`,
         10,
         20
@@ -188,21 +190,18 @@ class Game {
     }
   }
 
-  gameStart(shipId: string, shipPosition: Vec2D, uid: string) {
+  gameStart(shipPosition: Vec2D) {
     this.isRunning = true;
 
-    this.initShip(shipId, shipPosition);
+    this.initShip(this.shipId, shipPosition, this.controllers, this.players);
 
     // Add obstacles
     for (let i = 0; i < 200; i++) {
       this.initObstacle(new Vec2D(Math.random() * 5000, Math.random() * 5000));
     }
 
-    // Add current player to the ship
-    this.initPlayer(shipId, uid);
-
     // Center map on the ship
-    this.centerMapOnShip(shipId);
+    this.centerMapOnShip(this.shipId);
 
     this.previousTimestamp = performance.now();
     window.requestAnimationFrame(this.doTick);

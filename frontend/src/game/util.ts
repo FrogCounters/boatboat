@@ -1,3 +1,5 @@
+import SimplePeer from "simple-peer";
+
 export class Vec2D {
     constructor(public x: number, public y: number) {}
 
@@ -41,3 +43,10 @@ export class Vec2D {
         return Math.atan2(-this.x, this.y);
     }
 }
+
+export type Controller = {
+    peer: SimplePeer.Instance;
+    joystick: { magnitude: number; angle: number };
+    a: boolean;
+    b: boolean;
+};

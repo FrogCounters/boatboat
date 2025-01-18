@@ -4,7 +4,8 @@ import HealthBar from "./game/HealthBar";
 import Leaderboard from "./game/Leaderboard";
 import { WS_URL } from "./config";
 import SimplePeer from "simple-peer";
-import { Vec2D } from "./game/util";
+import { Vec2D, Controller } from "./game/util";
+import { QRCodeSVG } from "qrcode.react";
 
 const users = [
   { rank: 1, name: "Alice", uid: "1", point: 100 },
@@ -15,19 +16,14 @@ const users = [
   { rank: 6, name: "Flower", uid: "6", point: 70 },
 ];
 
-type Player = {
-  peer: SimplePeer.Instance;
-  joystick: { magnitude: number; angle: number };
-  a: boolean;
-  b: boolean;
-};
-
 function App() {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const playersRef = useRef<{ [key: string]: Player }>({});
+  const playersRef = useRef<Map<string, Controller>>(new Map());
   const players = playersRef.current!;
+  const [shipId, setShipId] = useState<string | null>(null);
+  const shipIdRef = useRef<string | null>(null);
 
   const uid = "6"; // Current player's unique ID
 
@@ -42,7 +38,7 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.type === "signal") {
         const playerId = message.player_id;
-        players[playerId].peer.signal(message.data);
+        players.get(playerId)?.peer.signal(message.data);
       } else if (message.type == "ready") {
         const playerId = message.player_id;
         const peer = new SimplePeer({
@@ -71,6 +67,7 @@ function App() {
         });
         peer.on("connect", () => {
           console.log("Connected to new controller", playerId);
+          gameRef.current?.initPlayer(shipIdRef.current!, playerId);
         });
         peer.on("data", (data) => {
           const message = JSON.parse(data);
@@ -88,9 +85,13 @@ function App() {
         });
         peer.on("disconnect", () => {
           peer.destroy();
-          delete players[playerId];
+          players.delete(playerId);
         });
-        players[playerId] = player;
+        players.set(playerId, player);
+      } else if (message.type == "init") {
+        setShipId(message.ship_id);
+        shipIdRef.current = message.ship_id;
+        console.log("Ship ID", message.ship_id);
       } else {
         console.log("Unknown message type", message);
       }
@@ -104,24 +105,26 @@ function App() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (!shipId) return;
 
-    const game = new Game(canvas);
+    const game = new Game(canvas, shipId, players);
     gameRef.current = game;
 
-    const shipId = "1";
     const shipPosition = new Vec2D(1000, 200);
 
-    game.gameStart(shipId, shipPosition, uid);
+    game.gameStart(shipPosition);
 
     return () => {
       game.stopGame();
     };
-  }, []);
+  }, [shipId]);
 
   return (
     <div className="w-[90vw] m-auto">
       <div className="justify-between flex my-5">
-        <div className="box-border h-32 w-32 p-4 border-4">QR here</div>
+        <div className="box-border h-32 w-32">
+          <QRCodeSVG value={shipId ? shipId : ""} />
+        </div>
         <HealthBar health={20} />
       </div>
       <div className="relative mt-5 w-[100%]">
@@ -133,7 +136,7 @@ function App() {
           style={{ width: "auto", height: "600px" }}
         />
         <div className="absolute top-1 right-1 opacity-70 bg-transparent">
-          <Leaderboard users={users} uid={uid} />
+          {/*<Leaderboard users={users} uid={uid} />*/}
         </div>
       </div>
     </div>
