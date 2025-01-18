@@ -98,7 +98,7 @@ function App() {
 
     const shipId = "1";
     const shipPosition = { x: 1000, y: 200, angle: 0 };
-    game.initShip(shipId, shipPosition);
+    game.initShip(shipId, shipPosition, [], { x: 0, y: 0 }, { x: 0, y: 0 });
 
     // Add obstacles
     for (let i = 0; i < 200; i++) {
@@ -109,7 +109,7 @@ function App() {
     }
 
     // Add current player to the ship
-    game.initPlayer(shipId, uid);
+    // game.initPlayer(shipId, uid);
 
     // Center map on the ship
     game.centerMapOnShip(shipId);
