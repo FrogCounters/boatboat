@@ -1,22 +1,87 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Game from "./game/Game";
 import HealthBar from "./game/HealthBar";
 import Leaderboard from "./game/Leaderboard";
+import { WS_URL } from "./config";
+import SimplePeer from "simple-peer";
+import { Vec2D } from "./game/util";
+
+const users = [
+  { rank: 1, name: "Alice", uid: "1", point: 100 },
+  { rank: 2, name: "Bob", uid: "2", point: 90 },
+  { rank: 3, name: "Charlie", uid: "3", point: 80 },
+  { rank: 4, name: "Donkey", uid: "4", point: 70 },
+  { rank: 5, name: "Elephant", uid: "5", point: 75 },
+  { rank: 6, name: "Flower", uid: "6", point: 70 },
+];
+
+type Player = {
+  peer: SimplePeer.Instance;
+  joystick: Vec2D;
+  a: boolean;
+  b: boolean;
+};
 
 function App() {
-  const users = [
-    { rank: 1, name: "Alice", uid: "1", point: 100 },
-    { rank: 2, name: "Bob", uid: "2", point: 90 },
-    { rank: 3, name: "Charlie", uid: "3", point: 80 },
-    { rank: 4, name: "Donkey", uid: "4", point: 70 },
-    { rank: 5, name: "Elephant", uid: "5", point: 75 },
-    { rank: 6, name: "Flower", uid: "6", point: 70 },
-  ];
-
+  const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
+  const playersRef = useRef<{ [key: string]: Player }>({});
+  const players = playersRef.current!;
 
   const uid = "6";
+
+  useEffect(() => {
+    const ws_ = new WebSocket(`${WS_URL}/ws`);
+    ws_.onopen = () => {
+      console.log("Connected to server");
+      setWs(ws_);
+    };
+
+    ws_.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "signal") {
+        const playerId = message.player_id;
+        players[playerId].peer.signal(message.data)
+      } else if (message.type == "ready") {
+        const playerId = message.player_id;
+        const peer = new SimplePeer({
+          initiator: true,
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun.nextcloud.com:443" },
+            ],
+          },
+        });
+        peer.on("signal", (data) => {
+          ws_.send(JSON.stringify({ type: "player_communication", player_id: playerId, data}));
+        });
+        peer.on("connect", () => {
+          console.log("Connected to new controller", playerId);
+        })
+        peer.on("data", (data) => {
+          console.log("Data from peer", playerId, data);
+        });
+        peer.on("disconnect", () => {
+          peer.destroy();
+          delete players[playerId];
+        });
+        players[playerId] = {
+          peer,
+          joystick: new Vec2D(0, 0),
+          a: false,
+          b: false,
+        };
+      } else {
+        console.log("Unknown message type", message);
+      }
+    };
+
+    return () => {
+      ws_.close();
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
