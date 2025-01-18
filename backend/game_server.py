@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import uuid
 from enum import Enum
+import math
 
 app = FastAPI()
 
@@ -42,11 +43,12 @@ class Ship:
             
         # Define relative position based on ship position
         relative_positions = {
-            Position.HELM: {"x": 0, "y": 0},  # Center of ship
+            Position.HELM: {"x": 0, "y": 10},  # Front of the ship
             Position.CANNON_LEFT_1: {"x": -20, "y": 10},  # Left side front
             Position.CANNON_LEFT_2: {"x": -20, "y": -10},  # Left side back
             Position.CANNON_RIGHT_1: {"x": 20, "y": 10},  # Right side front
             Position.CANNON_RIGHT_2: {"x": 20, "y": -10},  # Right side back
+
         }
         
         self.players[player_id] = Player(
@@ -86,7 +88,6 @@ class Bullet:
     position: dict  # {x: float, y: float}
     angle: float
     ship_id: str
-    player_id: str  # Track which player fired the bullet
     timestamp: float
 
 class GameState:
@@ -105,14 +106,13 @@ class GameState:
         self.ships[ship_id] = ship
         return ship
     
-    def add_bullet(self, bullet_data: dict, ship_id: str, player_id: str) -> Bullet:
+    def add_bullet(self, bullet_data: dict, ship_id: str) -> Bullet:
         bullet_id = str(uuid.uuid4())
         bullet = Bullet(
             id=bullet_id,
             position=bullet_data["position"],
             angle=bullet_data["angle"],
             ship_id=ship_id,
-            player_id=player_id,
             timestamp=bullet_data["timestamp"]
         )
         self.bullets[bullet_id] = bullet
@@ -175,7 +175,7 @@ async def broadcast_game_state():
                     await connection.send_text(json.dumps(message))
                 except:
                     pass
-        await asyncio.sleep(0.005)  # TODO: change this 5ms update interval
+        await asyncio.sleep(10)  # TODO: change this 5ms update interval
 
 @app.on_event("startup")
 async def startup_event():
@@ -184,33 +184,59 @@ async def startup_event():
 # Player : Ship Mapping (To know which player moved)
 player_ship_mapping: Dict[str, str] = {}
 
-@app.get("/joinship")
-async def join_ship(ship_id: str):
+# Track WebSocket connections for both ships and players
+player_connections: Dict[str, WebSocket] = {}
+
+
+@app.websocket("/joinship")
+async def join_ship_websocket(websocket: WebSocket, ship_id: str):
     """
-    REST Endpoint for players to join a ship.
-    Verifies the ship exists before allowing join.
+    WebSocket endpoint for player-server communication.
+    Simply forwards messages between player and ship.
     """
-    # Check if ship exists in game state
+    # Check if ship exists
     if ship_id not in game_state.ships:
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Ship not found"}
-        )
+        await websocket.close(code=4000, reason="Ship not found")
+        return
+        
+    await websocket.accept()
     
+    # Generate player_id for identification
     player_id = str(uuid.uuid4())
 
-    # Return success if ship exists
-    return JSONResponse({
-        "success": True,
-        "ship_id": ship_id,
-        "player_id": player_id
-    })
+    # Store player connection
+    player_connections[player_id] = websocket
+    
+    try:
+        # Send initial player_id created back to the player
+        await websocket.send_text(json.dumps({
+            "type": "init",
+            "player_id": player_id
+        }))
+
+        # Forward all messages to the ship
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            # Add player_id to message before forwarding
+            message["player_id"] = player_id
+            
+            # Forward to ship if connected
+            if ship_id in game_state.connections:
+                ship_socket = game_state.connections[ship_id]
+                await ship_socket.send_text(json.dumps(message))
+                
+    except WebSocketDisconnect:
+        pass
+
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for ship-server communication.
-    Generates a ship_id on initial connection and sends it to the ship.
+    Handles location updates, bullet updates, and player communication forwarding.
     """
     await websocket.accept()
     
@@ -238,13 +264,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 game_state.update_ship_location(ship_id, message["data"])
                 
             elif message["type"] == "bullet_update":
-                # Bullet updates should include player_id from ship's WebRTC connection
-                if "player_id" not in message["data"]:
-                    continue
-                    
-                bullet = game_state.add_bullet(message["data"], ship_id, message["data"]["player_id"])
+                bullet = game_state.add_bullet(message["data"], ship_id)
                 
-                # Check for collisions (simplified)
+                # Check for collisions (simplified for now)
                 bullet_pos = bullet.position
                 for other_ship in game_state.ships.values():
                     if other_ship.id != ship_id:
@@ -253,12 +275,25 @@ async def websocket_endpoint(websocket: WebSocket):
                         dx = bullet_pos["x"] - ship_pos["x"]
                         dy = bullet_pos["y"] - ship_pos["y"]
                         distance = (dx * dx + dy * dy) ** 0.5
-                        
-                        if distance < 50:  # Temporary Collision radius
+
+                        # TODO: FIX, assume dx cannot be 0 here since "collision" cannot theoretically happen
+                        bullet_angle = math.atan2(dy, dx)
+
+                        # TODO: FIX, Temporary Collision radius and no leeway for angle
+                        if distance < 50 and bullet_angle == bullet.angle:  
                             other_ship.health -= 10
                             game_state.ships[ship_id].score += 1
                             del game_state.bullets[bullet.id]
                             break
+
+            elif message["type"] == "player_communication":
+                # Forward message to specific player
+                if "player_id" in message:
+                    player_id = message["player_id"]
+                    if player_id in player_connections:
+                        player_socket = player_connections[player_id]
+                        # Forward the entire message to the player
+                        await player_socket.send_text(json.dumps(message))
                     
     except WebSocketDisconnect:
         # Cleanup on disconnect
