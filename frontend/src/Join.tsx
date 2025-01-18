@@ -1,23 +1,35 @@
-import { useEffect, useRef, useState } from "react";
+import { PointerEventHandler, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Vec2D } from "./game/util";
 import { WS_URL } from "./config";
 import SimplePeer from "simple-peer";
 
-const Button = () => {
+const Button = ({
+  btnUpdate,
+}: {
+  btnUpdate: (isButtonPressed: boolean) => void;
+}) => {
   return (
-    <button className="w-24 h-24 bg-gray-400 flex justify-center items-center shadow-xl">
+    <button
+      onPointerDown={() => btnUpdate(true)}
+      onPointerUp={() => btnUpdate(false)}
+      className="w-24 h-24 bg-gray-400 flex justify-center items-center shadow-xl"
+    >
       <div className="w-20 h-20 rounded-full bg-red-700 shadow-xl"></div>
     </button>
   );
 };
 
-const Joystick = () => {
+const Joystick = ({
+  joyUpdate,
+}: {
+  joyUpdate: (magnitude: number, angle: number) => void;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const joystickPosRef = useRef<Vec2D>(new Vec2D(125, 125));
   const anchorPosRef = useRef<Vec2D>(new Vec2D(125, 125));
 
-  const draw = () => {
+  const drawAndUpdate = () => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
     const joystickPos = joystickPosRef.current!;
@@ -33,6 +45,10 @@ const Joystick = () => {
     ctx.arc(joystickPos.x, joystickPos.y, 50, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
+
+    // Update
+    const delta = joystickPos.subtract(new Vec2D(125, 125));
+    joyUpdate(delta.magnitude() / 50, delta.angle());
   };
 
   const onTouchStart = (touchEvent: TouchEvent) => {
@@ -54,7 +70,7 @@ const Joystick = () => {
 
     joystickPosRef.current!.x = 125 + delta.x;
     joystickPosRef.current!.y = 125 + delta.y;
-    draw();
+    drawAndUpdate();
   };
 
   const onTouchEnd = (touchEvent: TouchEvent) => {
@@ -63,7 +79,7 @@ const Joystick = () => {
     anchorPosRef.current!.x = 125;
     joystickPosRef.current!.x = 125;
     joystickPosRef.current!.y = 125;
-    draw();
+    drawAndUpdate();
   };
 
   useEffect(() => {
@@ -71,14 +87,14 @@ const Joystick = () => {
     canvas.addEventListener("touchstart", onTouchStart, { passive: false });
     canvas.addEventListener("touchmove", onTouchMove, { passive: false });
     canvas.addEventListener("touchend", onTouchEnd, { passive: false });
-    draw();
+    drawAndUpdate();
 
     return () => {
       canvas.removeEventListener("touchstart", onTouchStart);
       canvas.removeEventListener("touchmove", onTouchMove);
       canvas.removeEventListener("touchend", onTouchEnd);
     };
-  }, []);
+  }, [joyUpdate]);
 
   return <canvas ref={canvasRef} width={250} height={250}></canvas>;
 };
@@ -88,6 +104,7 @@ const Join = () => {
   const shipId = searchParams.get("shipId");
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
   useEffect(() => {
     if (!shipId) return;
@@ -105,13 +122,13 @@ const Join = () => {
       ws_.send(JSON.stringify({ type: "signal", data }));
     });
     peer.on("connect", () => {
-      // TODO: connected
       console.log("Connected to peer");
+      setIsConnected(true);
     });
     peer.on("close", () => {
       peer.destroy();
       setPeer(null);
-      // TODO: disconnected
+      setIsConnected(false);
     });
     setPeer(peer);
 
@@ -124,7 +141,7 @@ const Join = () => {
       if (message.type === "player_communication") {
         peer.signal(message.data);
       } else {
-        console.log("Unknown message type", message)
+        console.log("Unknown message type", message);
       }
     };
     ws_.onclose = () => {
@@ -140,11 +157,47 @@ const Join = () => {
     <main className="w-screen h-screen bg-gray-400 p-4">
       <div className="w-full h-full bg-gray-800 flex flex-col justify-around">
         <div className="mx-auto">
-          <Joystick />
+          <Joystick
+            joyUpdate={(magnitude, angle) => {
+              if (isConnected && peer != null) {
+                // console.log("joyUpdate", magnitude, angle, isConnected, peer);
+                peer.send(
+                  JSON.stringify({
+                    type: "joystick",
+                    magnitude,
+                    angle,
+                  })
+                );
+              }
+            }}
+          />
         </div>
         <div className="buttons flex flex-col gap-4 ml-12">
-          <Button />
-          <Button />
+          <Button
+            btnUpdate={(isButtonPressed) => {
+              if (isConnected && peer != null) {
+                // console.log("isConnected", isConnected);
+                peer.send(
+                  JSON.stringify({
+                    type: "a",
+                    data: isButtonPressed,
+                  })
+                );
+              }
+            }}
+          />
+          <Button
+            btnUpdate={(isButtonPressed) => {
+              if (isConnected && peer != null) {
+                peer.send(
+                  JSON.stringify({
+                    type: "b",
+                    data: isButtonPressed,
+                  })
+                );
+              }
+            }}
+          />
         </div>
       </div>
     </main>

@@ -35,4 +35,9 @@ export class Vec2D {
     toString(): string {
         return `(${this.x}, ${this.y})`;
     }
+
+    angle(): number {
+        console.log(this.x, this.y, Math.atan2(-this.x, this.y));
+        return Math.atan2(-this.x, this.y);
+    }
 }
