@@ -42,7 +42,7 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.type === "signal") {
         const playerId = message.player_id;
-        players[playerId].peer.signal(message.data)
+        players[playerId].peer.signal(message.data);
       } else if (message.type == "ready") {
         const playerId = message.player_id;
         const peer = new SimplePeer({
@@ -55,11 +55,17 @@ function App() {
           },
         });
         peer.on("signal", (data) => {
-          ws_.send(JSON.stringify({ type: "player_communication", player_id: playerId, data}));
+          ws_.send(
+            JSON.stringify({
+              type: "player_communication",
+              player_id: playerId,
+              data,
+            })
+          );
         });
         peer.on("connect", () => {
           console.log("Connected to new controller", playerId);
-        })
+        });
         peer.on("data", (data) => {
           console.log("Data from peer", playerId, data);
         });

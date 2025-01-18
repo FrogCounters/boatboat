@@ -1,3 +1,5 @@
+import Boat from "../assets/sprites/Boat.png";
+
 class Game {
   private context: CanvasRenderingContext2D | null;
   private ships: Map<
@@ -18,9 +20,9 @@ class Game {
   private previousTimestamp = 0;
   private isRunning = false;
 
-  private acceleration = 5;
-  private deceleration = 3;
-  private maxSpeed = 10;
+  private acceleration = 10;
+  private deceleration = 5;
+  private maxSpeed = 100;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -33,6 +35,37 @@ class Game {
     window.addEventListener("keyup", this.handleKeyUp);
   }
 
+  //   initShip(shipId: string, position: { x: number; y: number; angle: number }) {
+  //     if (this.context) {
+  //       const boatImage = new Image(); // Create a new Image object
+  //       boatImage.src = Boat; // Set the source of the image
+
+  //       boatImage.onload = () => {
+  //         const width = 70;
+  //         const height = 40;
+
+  //         const mappedX = position.x - this.mapCoordinates.x;
+  //         const mappedY = position.y - this.mapCoordinates.y;
+
+  //         // Draw the image once it's loaded
+  //         this.context.drawImage(
+  //           boatImage,
+  //           mappedX - width / 2, // X position for centering the image
+  //           mappedY - height / 2, // Y position for centering the image
+  //           width, // Width of the image
+  //           height // Height of the image
+  //         );
+  //       };
+
+  //       // Store the ship data
+  //       this.ships.set(shipId, {
+  //         position,
+  //         players: [],
+  //         velocity: { x: 0, y: 0 },
+  //         acceleration: { x: 0, y: 0 },
+  //       });
+  //     }
+  //   }
   initShip(shipId: string, position: { x: number; y: number; angle: number }) {
     if (this.context) {
       this.context.imageSmoothingEnabled = false;
@@ -97,42 +130,44 @@ class Game {
     if (ship) {
       switch (event.key) {
         case "ArrowUp":
-          ship.acceleration.y = -this.acceleration; // Accelerate upwards
+          ship.acceleration.y = -this.acceleration;
           break;
         case "ArrowDown":
-          ship.acceleration.y = this.acceleration; // Accelerate downwards
+          ship.acceleration.y = this.acceleration;
           break;
         case "ArrowLeft":
-          ship.acceleration.x = -this.acceleration; // Accelerate left
+          ship.acceleration.x = -this.acceleration;
           break;
         case "ArrowRight":
-          ship.acceleration.x = this.acceleration; // Accelerate right
+          ship.acceleration.x = this.acceleration;
           break;
         default:
           return;
       }
+      console.log(`Key Down: ${event.key}, Acceleration:`, ship.acceleration);
     }
   };
 
-  handleKeyUp = (event: KeyboardEvent) => {
-    const shipId = "1"; // Assume controlling ship with ID 1
-    const ship = this.ships.get(shipId);
+  //   handleKeyUp = (event: KeyboardEvent) => {
+  //     const shipId = "1";
+  //     const ship = this.ships.get(shipId);
 
-    if (ship) {
-      switch (event.key) {
-        case "ArrowUp":
-        case "ArrowDown":
-          ship.acceleration.y = -this.deceleration; // Begin deceleration
-          break;
-        case "ArrowLeft":
-        case "ArrowRight":
-          ship.acceleration.x = -this.deceleration; // Begin deceleration
-          break;
-        default:
-          return;
-      }
-    }
-  };
+  //     if (ship) {
+  //       switch (event.key) {
+  //         case "ArrowUp":
+  //         case "ArrowDown":
+  //           ship.acceleration.y = 0;
+  //           break;
+  //         case "ArrowLeft":
+  //         case "ArrowRight":
+  //           ship.acceleration.x = 0;
+  //           break;
+  //         default:
+  //           return;
+  //       }
+  //       console.log(`Key Up: ${event.key}, Acceleration:`, ship.acceleration);
+  //     }
+  //   };
 
   centerMapOnShip(shipId: string) {
     const ship = this.ships.get(shipId);
@@ -146,61 +181,35 @@ class Game {
   }
 
   update(delta: number) {
-    const speedMultiplier = 200; // Adjust for smoother movement
+    const speedMultiplier = 200;
 
     this.ships.forEach((ship, shipId) => {
-      // Apply acceleration if keys are pressed
-
-      if (ship.acceleration.x !== 0 || ship.acceleration.y !== 0) {
-        // Apply acceleration in the direction of the velocity
-        ship.velocity.x += ship.acceleration.x * delta;
-        ship.velocity.y += ship.acceleration.y * delta;
-
-        console.log(
-          ship.velocity.x,
-          ship.velocity.y,
-          ship.acceleration.x,
-          ship.acceleration.y
-        );
-
-        // Clamp velocity to max speed
-        if (ship.velocity.x > this.maxSpeed) ship.velocity.x = this.maxSpeed;
-        if (ship.velocity.x < -this.maxSpeed) ship.velocity.x = -this.maxSpeed;
-        if (ship.velocity.y > this.maxSpeed) ship.velocity.y = this.maxSpeed;
-        if (ship.velocity.y < -this.maxSpeed) ship.velocity.y = -this.maxSpeed;
-      }
-
-      //   // Apply deceleration when no keys are pressed
-      //   if (ship.acceleration.x === 0 && ship.acceleration.y === 0) {
-      //     // Gradual deceleration
-      //     if (ship.velocity.x > 0) {
-      //       ship.velocity.x = Math.max(
-      //         0,
-      //         ship.velocity.x - this.deceleration * delta
-      //       );
-      //     } else if (ship.velocity.x < 0) {
-      //       ship.velocity.x = Math.min(
-      //         0,
-      //         ship.velocity.x + this.deceleration * delta
-      //       );
-      //     }
-
-      //     if (ship.velocity.y > 0) {
-      //       ship.velocity.y = Math.max(
-      //         0,
-      //         ship.velocity.y - this.deceleration * delta
-      //       );
-      //     } else if (ship.velocity.y < 0) {
-      //       ship.velocity.y = Math.min(
-      //         0,
-      //         ship.velocity.y + this.deceleration * delta
-      //       );
-      //     }
-      //   }
-
       // Update ship position
-      ship.position.x += ship.velocity.x * delta * speedMultiplier;
-      ship.position.y += ship.velocity.y * delta * speedMultiplier;
+      //ship.position.x += ship.velocity.x * delta;
+      //ship.position.y += ship.velocity.y * delta;
+
+      // Apply acceleration to velocity
+      ship.velocity.x = ship.velocity.x + 10 * delta;
+      ship.velocity.y = ship.velocity.y + 10 * delta;
+
+      console.log(ship.velocity, ship.acceleration);
+
+      // Cap velocity to max speed
+      //   ship.velocity.x = Math.max(
+      //     -this.maxSpeed,
+      //     Math.min(this.maxSpeed, ship.velocity.x)
+      //   );
+      //   ship.velocity.y = Math.max(
+      //     -this.maxSpeed,
+      //     Math.min(this.maxSpeed, ship.velocity.y)
+      //   );
+
+      //   console.log(
+      //     ship.velocity.x,
+      //     ship.velocity.y
+      //     // ship.position.x,
+      //     // ship.position.y,
+      //   );
 
       // Recenter map on the ship being controlled
       if (shipId === "1") {
@@ -208,6 +217,18 @@ class Game {
       }
     });
   }
+  //   update(delta: number) {
+  //     const speedMultiplier = 200;
+  //     this.ships.forEach((ship, shipId) => {
+  //       ship.position.x += ship.velocity.x * delta * speedMultiplier;
+  //       ship.position.y += ship.velocity.y * delta * speedMultiplier;
+
+  //       // Recenter map on the ship being controlled
+  //       if (shipId === "1") {
+  //         this.centerMapOnShip(shipId);
+  //       }
+  //     });
+  //   }
 
   draw() {
     if (this.context) {
@@ -249,7 +270,6 @@ class Game {
     const delta = (currentTimestamp - this.previousTimestamp) / 1000;
     this.previousTimestamp = currentTimestamp;
 
-    // console.log(`Delta: ${delta}`);
     this.update(delta);
     this.draw();
 
