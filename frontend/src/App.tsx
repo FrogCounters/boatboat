@@ -17,7 +17,7 @@ const users = [
 
 type Player = {
   peer: SimplePeer.Instance;
-  joystick: Vec2D;
+  joystick: {magnitude: number, angle: number};
   a: boolean;
   b: boolean;
 };
@@ -54,6 +54,12 @@ function App() {
             ],
           },
         });
+        const player = {
+          peer,
+          joystick: {magnitude: 0, angle: 0},
+          a: false,
+          b: false,
+        };
         peer.on("signal", (data) => {
           ws_.send(
             JSON.stringify({
@@ -67,18 +73,24 @@ function App() {
           console.log("Connected to new controller", playerId);
         });
         peer.on("data", (data) => {
-          console.log("Data from peer", playerId, JSON.parse(data));
+          const message = JSON.parse(data);
+          // console.log("Data from peer", playerId, message);
+          if (message.type == "a") {
+            player.a = message.data;
+          } else if (message.type == "b") {
+            player.b = message.data;
+          } else if (message.type == "joystick") {
+            player.joystick.magnitude = message.magnitude;
+            player.joystick.angle = message.angle;
+          } else {
+            console.log("unknown webrtc message from", playerId);
+          }
         });
         peer.on("disconnect", () => {
           peer.destroy();
           delete players[playerId];
         });
-        players[playerId] = {
-          peer,
-          joystick: new Vec2D(0, 0),
-          a: false,
-          b: false,
-        };
+        players[playerId] = player;
       } else {
         console.log("Unknown message type", message);
       }
