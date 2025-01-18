@@ -1,5 +1,8 @@
 import { Vec2D } from "./util";
 import Ship from "./Ship";
+import PlayerSrc from "../assets/sprites/Pirates/Pirate0.png";
+const PlayerImg = new Image();
+PlayerImg.src = PlayerSrc;
 
 class Person {
   constructor(

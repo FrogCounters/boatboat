@@ -1,5 +1,8 @@
 import { Vec2D, Controller } from "./util";
 import Player from "./Player";
+import BoatSrc from "../assets/sprites/boat.png";
+const BoatImg = new Image();
+BoatImg.src = BoatSrc;
 
 class Ship {
   constructor(
@@ -67,14 +70,22 @@ class Ship {
       return;
     }
 
-    const width = 250;
-    const height = 200;
+    const width = 420;
+    const height = 581;
 
     const mappedX = this.position.x - mapCoordinates.x;
     const mappedY = this.position.y - mapCoordinates.y;
 
-    context.fillStyle = "grey";
-    context.fillRect(mappedX - width / 2, mappedY - height / 2, width, height);
+    context.save();
+    context.translate(mappedX, mappedY);
+    context.rotate(3.1415+this.velocity.angle());
+    context.drawImage(BoatImg, -width / 2, -height / 2);
+    context.restore();
+
+    context.fillStyle = "red";
+    context.beginPath();
+    context.arc(mappedX, mappedY, 20, 0, 2 * Math.PI);
+    context.fill();
   }
 }
 
