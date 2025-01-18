@@ -61,7 +61,7 @@ function App() {
           console.log("Connected to new controller", playerId);
         })
         peer.on("data", (data) => {
-          console.log("Data from peer", playerId, data);
+          console.log("Data from peer", playerId, JSON.parse(data));
         });
         peer.on("disconnect", () => {
           peer.destroy();
