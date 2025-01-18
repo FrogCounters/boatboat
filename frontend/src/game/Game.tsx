@@ -1,21 +1,28 @@
+import Boat from "../assets/sprites/Boat.png";
+
 class Game {
   private context: CanvasRenderingContext2D | null;
-
   private ships: Map<
-    number,
-    { position: { x: number; y: number }; players: string[] }
+    string,
+    {
+      position: { x: number; y: number; angle: number };
+      players: string[];
+      velocity: { x: number; y: number };
+      acceleration: { x: number; y: number };
+    }
   > = new Map();
-
   private obstacles: { x: number; y: number }[] = [];
-
   private canvas: HTMLCanvasElement;
-
-  private shipSpeed: number = 5;
-
   private mapCoordinates = { x: 0, y: 0 };
-
   private viewportWidth = 1280;
   private viewportHeight = 720;
+
+  private previousTimestamp = 0;
+  private isRunning = false;
+
+  private acceleration = 10;
+  private deceleration = 5;
+  private maxSpeed = 100;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -25,9 +32,41 @@ class Game {
     }
 
     window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("keyup", this.handleKeyUp);
   }
 
-  initShip(shipId: number, position: { x: number; y: number }) {
+  //   initShip(shipId: string, position: { x: number; y: number; angle: number }) {
+  //     if (this.context) {
+  //       const boatImage = new Image(); // Create a new Image object
+  //       boatImage.src = Boat; // Set the source of the image
+
+  //       boatImage.onload = () => {
+  //         const width = 70;
+  //         const height = 40;
+
+  //         const mappedX = position.x - this.mapCoordinates.x;
+  //         const mappedY = position.y - this.mapCoordinates.y;
+
+  //         // Draw the image once it's loaded
+  //         this.context.drawImage(
+  //           boatImage,
+  //           mappedX - width / 2, // X position for centering the image
+  //           mappedY - height / 2, // Y position for centering the image
+  //           width, // Width of the image
+  //           height // Height of the image
+  //         );
+  //       };
+
+  //       // Store the ship data
+  //       this.ships.set(shipId, {
+  //         position,
+  //         players: [],
+  //         velocity: { x: 0, y: 0 },
+  //         acceleration: { x: 0, y: 0 },
+  //       });
+  //     }
+  //   }
+  initShip(shipId: string, position: { x: number; y: number; angle: number }) {
     if (this.context) {
       this.context.imageSmoothingEnabled = false;
       this.context.fillStyle = "grey";
@@ -44,7 +83,12 @@ class Game {
         height
       );
 
-      this.ships.set(shipId, { position, players: [] });
+      this.ships.set(shipId, {
+        position,
+        players: [],
+        velocity: { x: 0, y: 0 },
+        acceleration: { x: 0, y: 0 },
+      });
     }
   }
 
@@ -70,66 +114,62 @@ class Game {
     }
   }
 
-  initPlayer(shipId: number, uid: string) {
-    if (this.context) {
-      const ship = this.ships.get(shipId);
-      if (ship) {
-        ship.players.push(uid);
-        this.initShip(shipId, ship.position);
-
-        this.context.fillStyle = "#0000ff";
-        const width = 15;
-        const height = 8;
-
-        const mappedX = ship.position.x - this.mapCoordinates.x;
-        const mappedY = ship.position.y - this.mapCoordinates.y;
-
-        this.context.fillRect(
-          mappedX - width / 2,
-          mappedY - height / 2,
-          width,
-          height
-        );
-      } else {
-        console.error(`Ship with ID ${shipId} does not exist.`);
-      }
+  initPlayer(shipId: string, uid: string) {
+    const ship = this.ships.get(shipId);
+    if (ship) {
+      ship.players.push(uid);
+    } else {
+      console.error(`Ship with ID ${shipId} does not exist.`);
     }
   }
 
   handleKeyDown = (event: KeyboardEvent) => {
-    const shipId = 1; // Assume you are controlling ship with ID 1
+    const shipId = "1"; // Assume controlling ship with ID 1
     const ship = this.ships.get(shipId);
 
     if (ship) {
-      const { position } = ship;
-
       switch (event.key) {
         case "ArrowUp":
-        case "w":
-          position.y -= this.shipSpeed;
+          ship.acceleration.y = -this.acceleration;
           break;
         case "ArrowDown":
-        case "s":
-          position.y += this.shipSpeed;
+          ship.acceleration.y = this.acceleration;
           break;
         case "ArrowLeft":
-        case "a":
-          position.x -= this.shipSpeed;
+          ship.acceleration.x = -this.acceleration;
           break;
         case "ArrowRight":
-        case "d":
-          position.x += this.shipSpeed;
+          ship.acceleration.x = this.acceleration;
           break;
         default:
           return;
       }
-
-      this.centerMapOnShip(shipId);
-      this.draw();
+      console.log(`Key Down: ${event.key}, Acceleration:`, ship.acceleration);
     }
   };
 
-  centerMapOnShip(shipId: number) {
+  //   handleKeyUp = (event: KeyboardEvent) => {
+  //     const shipId = "1";
+  //     const ship = this.ships.get(shipId);
+
+  //     if (ship) {
+  //       switch (event.key) {
+  //         case "ArrowUp":
+  //         case "ArrowDown":
+  //           ship.acceleration.y = 0;
+  //           break;
+  //         case "ArrowLeft":
+  //         case "ArrowRight":
+  //           ship.acceleration.x = 0;
+  //           break;
+  //         default:
+  //           return;
+  //       }
+  //       console.log(`Key Up: ${event.key}, Acceleration:`, ship.acceleration);
+  //     }
+  //   };
+
+  centerMapOnShip(shipId: string) {
     const ship = this.ships.get(shipId);
 
     if (ship) {
@@ -140,6 +180,56 @@ class Game {
     }
   }
 
+  update(delta: number) {
+    const speedMultiplier = 200;
+
+    this.ships.forEach((ship, shipId) => {
+      // Update ship position
+      //ship.position.x += ship.velocity.x * delta;
+      //ship.position.y += ship.velocity.y * delta;
+
+      // Apply acceleration to velocity
+      ship.velocity.x = ship.velocity.x + 10 * delta;
+      ship.velocity.y = ship.velocity.y + 10 * delta;
+
+      console.log(ship.velocity, ship.acceleration);
+
+      // Cap velocity to max speed
+      //   ship.velocity.x = Math.max(
+      //     -this.maxSpeed,
+      //     Math.min(this.maxSpeed, ship.velocity.x)
+      //   );
+      //   ship.velocity.y = Math.max(
+      //     -this.maxSpeed,
+      //     Math.min(this.maxSpeed, ship.velocity.y)
+      //   );
+
+      //   console.log(
+      //     ship.velocity.x,
+      //     ship.velocity.y
+      //     // ship.position.x,
+      //     // ship.position.y,
+      //   );
+
+      // Recenter map on the ship being controlled
+      if (shipId === "1") {
+        this.centerMapOnShip(shipId);
+      }
+    });
+  }
+  //   update(delta: number) {
+  //     const speedMultiplier = 200;
+  //     this.ships.forEach((ship, shipId) => {
+  //       ship.position.x += ship.velocity.x * delta * speedMultiplier;
+  //       ship.position.y += ship.velocity.y * delta * speedMultiplier;
+
+  //       // Recenter map on the ship being controlled
+  //       if (shipId === "1") {
+  //         this.centerMapOnShip(shipId);
+  //       }
+  //     });
+  //   }
+
   draw() {
     if (this.context) {
       this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -149,31 +239,53 @@ class Game {
         this.drawObstacle(obstacle);
       });
 
-      // Draw ships and players
-      this.ships.forEach((ship, shipId) => {
-        this.initShip(shipId, ship.position);
-        ship.players.forEach((uid) => {
-          this.initPlayer(shipId, uid);
-        });
+      // Draw ships
+      this.ships.forEach((ship) => {
+        const { position } = ship;
+
+        this.initShip("1", position);
+        ship.players.forEach((uid) => this.initPlayer("1", uid));
       });
 
-      // Draw the coordinates for debugging
+      // Display debug information
       this.context.fillStyle = "#000000";
       this.context.font = "16px Arial";
       this.context.fillText(
         `Map Coordinates: x: ${this.mapCoordinates.x}, y: ${this.mapCoordinates.y}`,
         10,
-        40
+        20
       );
     }
   }
 
-  getPlayersInShip(shipId: number) {
+  gameStart() {
+    this.isRunning = true;
+    this.previousTimestamp = performance.now();
+    window.requestAnimationFrame(this.doTick);
+  }
+
+  doTick = (currentTimestamp: number) => {
+    if (!this.isRunning) return;
+
+    const delta = (currentTimestamp - this.previousTimestamp) / 1000;
+    this.previousTimestamp = currentTimestamp;
+
+    this.update(delta);
+    this.draw();
+
+    window.requestAnimationFrame(this.doTick);
+  };
+
+  stopGame() {
+    this.isRunning = false;
+  }
+
+  getPlayersInShip(shipId: string) {
     const ship = this.ships.get(shipId);
     return ship ? ship.players : [];
   }
 
-  getShipById(shipId: number) {
+  getShipById(shipId: string) {
     return this.ships.get(shipId);
   }
 }
