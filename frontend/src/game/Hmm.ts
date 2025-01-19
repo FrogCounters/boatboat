@@ -120,7 +120,7 @@ class Bomb extends Entity {
     if (!this.isSeen) {
       return;
     }
-    
+
     if (this.hasExploded) {
       this.drawable = new BombExplodeSprite();
     } else {
@@ -172,6 +172,7 @@ class State {
 const WIDTH = 1280;
 const HEIGHT = 720;
 class Game {
+  bombqueue: Array<Vec2D> = []
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   previousTimestamp: number = -1;
@@ -183,12 +184,15 @@ class Game {
   playerToBoat: Map<string, number> = new Map();
   playerToState: Map<string, State> = new Map();
   alpha = "A";
+  ws: WebSocket;
 
-  constructor(canvas: HTMLCanvasElement, controllers: Map<string, Controller>) {
+  constructor(canvas: HTMLCanvasElement, controllers: Map<string, Controller>, ws: WebSocket, bombqueue: Array<Vec2D>) {
     this.canvas = canvas;
     this.context = canvas.getContext("2d")!;
     this.doTick = this.doTick.bind(this);
     this.controllers = controllers;
+    this.ws = ws;
+    this.bombqueue = bombqueue
   }
 
   getAlpha(playerId: string): string {
@@ -235,6 +239,14 @@ class Game {
     this.isRunning = false;
   }
 
+  sendBomb(position: Vec2D) {
+    this.ws.send(JSON.stringify({
+      type: "bomb",
+      x: position.x,
+      y: position.y,
+    }));
+  }
+
   update(delta: number) {
     this.ships.forEach(ship => {
       ship.update(delta);
@@ -256,6 +268,12 @@ class Game {
       const idx = this.playerToBoat.get(playerId)!;
       inUse.add(idx);
     }
+
+    // Take bombs from queue
+    for (let i = 0; i < this.bombqueue.length; i++) {
+      this.bombs.push(new Bomb(this.bombqueue[i]));
+    }
+    this.bombqueue.splice(0, this.bombqueue.length)
 
     // Controller
     for (let [playerId, controller] of this.controllers) {
@@ -290,9 +308,15 @@ class Game {
           }
         }
       }
-      if (controller.b && !state?.b) {
+      if (controller.b && !state?.b && ship.hasBomb) {
         //drop bomb
         this.bombs.push(new Bomb(new Vec2D(ship.position.x, ship.position.y)))
+        this.sendBomb(ship.position)
+        ship.hasBomb = false
+        setInterval(() => {
+          ship.hasBomb = true
+        }, 4000);
+        // new Bomb(new Vec2D(ship.position.x, ship.position.y))
       }
       state.a = controller.a;
       state.b = controller.b;
