@@ -6,6 +6,10 @@ import BoatBombSrc from "../assets/sprites/BoatWithBomb.png";
 const BoatBombImg = new Image();
 BoatBombImg.src = BoatBombSrc;
 
+import MineSrc from "../assets/sprites/Mines/Mine0.png"
+const BombImg = new Image();
+BombImg.src = MineSrc;
+
 interface Drawable {
   draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void;
 }
@@ -63,6 +67,32 @@ class BoatBombSprite implements Drawable {
   }
 }
 
+
+class BombSprite implements Drawable {
+  draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void {
+    context.save();
+    context.translate(position.x, position.y);
+    context.rotate(rotation);
+    context.drawImage(BombImg, -BombImg.width / 2, -BombImg.height / 2);
+    context.restore();
+  }
+}
+
+class Bomb extends Entity {
+  constructor(position: Vec2D) {
+    super(position, undefined, undefined, undefined, new BoatBombSprite())
+  }
+
+  update(delta: number) {
+    super.update(delta);
+  }
+
+  draw(delta: number, context: CanvasRenderingContext2D): void {
+    this.drawable = new BombSprite();
+    super.draw(delta, context);
+  }
+}
+
 class Ship extends Entity {
   hasBomb: boolean = true
   alive: boolean = true
@@ -110,6 +140,7 @@ class Game {
   previousTimestamp: number = -1;
   isRunning: boolean = false;
   ships: Array<Ship> = [];
+  bombs: Array<Bomb> = [];
   controllers: Map<string, Controller> = new Map();
   playerToAlpha: Map<string, string> = new Map();
   playerToBoat: Map<string, number> = new Map();
@@ -219,6 +250,11 @@ class Game {
         }
       }
       if (controller.b && !state?.b) {
+        //drop bomb
+        console.log("bomb drop", controller)
+        this.bombs.push(new Bomb(new Vec2D(ship.position.x, ship.position.y)))
+        // new Bomb(new Vec2D(ship.position.x, ship.position.y))
+        
       }
       state.a = controller.a;
       state.b = controller.b;
@@ -247,6 +283,9 @@ class Game {
     this.context.clearRect(0, 0, WIDTH, HEIGHT);
     this.ships.forEach(ship => {
       ship.draw(delta, this.context);
+    });
+    this.bombs.forEach(b => {
+      b.draw(delta, this.context);
     });
   }
 }

@@ -7,6 +7,8 @@ import asyncio
 from enum import Enum
 import uuid
 
+GAME_UPDATE_SECONDS = 2
+
 app = FastAPI()
 
 class Team(Enum):
@@ -113,6 +115,32 @@ async def websocket_endpoint(websocket: WebSocket, team: str):
                     
     except WebSocketDisconnect:
         del team_connections[selected_team]
+
+async def websocket_keepalive():
+    while True:
+        # Prepare all game_state update message
+        message = {
+            "type": "ping"
+        }
+        
+        # Broadcast to all connected clients
+        for connection in player_connections.values():
+            try:
+                await connection.send_text(json.dumps(message))
+            except:
+                pass
+
+        for connection in team_connections.values():
+            try:
+                await connection.send_text(json.dumps(message))
+            except:
+                pass
+
+        await asyncio.sleep(GAME_UPDATE_SECONDS)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(websocket_keepalive())
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
