@@ -190,7 +190,8 @@ class Game {
             this.playerToBoat.set(playerId, newIdx);
             inUse.add(newIdx);
             inUse.delete(idx);
-            this.ships[newIdx].player;
+            this.ships[newIdx].player = this.getAlpha(playerId);
+            this.ships[idx].player = null;
             break;
           }
         }
@@ -207,6 +208,7 @@ class Game {
         for (let i = 0; i < this.ships.length; i++) {
           if (!inUse.has(i)) {
             this.playerToBoat.set(playerId, i);
+            this.ships[i].player = this.getAlpha(playerId);
             break;
           }
         }
