@@ -1,4 +1,10 @@
 import { Controller, Vec2D } from "./util";
+import BoatSrc from "../assets/sprites/Boat.png";
+const BoatImg = new Image();
+BoatImg.src = BoatSrc;
+import BoatBombSrc from "../assets/sprites/BoatWithBomb.png";
+const BoatBombImg = new Image();
+BoatBombImg.src = BoatBombSrc;
 
 interface Drawable {
   draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void;
@@ -37,12 +43,23 @@ class Entity {
   }
 }
 
-class ShipSprite implements Drawable {
+class BoatSprite implements Drawable {
   draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void {
-    context.fillStyle = "black";
-    context.beginPath();
-    context.arc(position.x, position.y, 20, 0, 2 * Math.PI);
-    context.fill();
+    context.save();
+    context.translate(position.x, position.y);
+    context.rotate(rotation);
+    context.drawImage(BoatImg, -BoatImg.width / 2, -BoatImg.height / 2);
+    context.restore();
+  }
+}
+
+class BoatBombSprite implements Drawable {
+  draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void {
+    context.save();
+    context.translate(position.x, position.y);
+    context.rotate(rotation);
+    context.drawImage(BoatBombImg, -BoatBombImg.width / 2, -BoatBombImg.height / 2);
+    context.restore();
   }
 }
 
@@ -55,7 +72,7 @@ class Ship extends Entity {
   constructor(
     position: Vec2D,
   ) {
-    super(position, new Vec2D(0, 0), new Vec2D(0, 0), Ship.MAX_SPEED, new ShipSprite());
+    super(position, new Vec2D(0, 0), new Vec2D(0, 0), Ship.MAX_SPEED, new BoatBombSprite());
   }
 
   update(delta: number) {
@@ -63,14 +80,19 @@ class Ship extends Entity {
   }
 
   draw(delta: number, context: CanvasRenderingContext2D): void {
+    if (this.hasBomb) {
+      this.drawable = new BoatBombSprite();
+    } else {
+      this.drawable = new BoatSprite();
+    }
     super.draw(delta, context);
 
     // Draw text at position
     if (this.player) {
       // Draw this.player above position
-      context.fillStyle = "black";
-      context.font = "12px Arial";
-      context.fillText(this.player, this.position.x, this.position.y - 30);
+      context.fillStyle = "red";
+      context.font = "20px Arial";
+      context.fillText(this.player, this.position.x, this.position.y - 70);
     }
   }
 }
@@ -152,7 +174,7 @@ class Game {
 
     // Decel
     for (let ship of this.ships) {
-      ship.acceleration = ship.velocity.normalize().multiply(-40);
+      ship.acceleration = ship.velocity.multiply(-1);
     }
 
     // Boats in use
