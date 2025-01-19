@@ -240,8 +240,9 @@ class Game {
   }
 
   sendBomb(position: Vec2D) {
+    console.log(this.ws)
     this.ws.send(JSON.stringify({
-      type: "bomb",
+      type: "bomb_update",
       x: position.x,
       y: position.y,
     }));

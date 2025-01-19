@@ -30,6 +30,7 @@ function App() {
 
     ws_.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      // console.log("recvd", message)
       if (message.type === "signal") {
         const playerId = message.player_id;
         players.get(playerId)?.peer.signal(message.data);
@@ -106,9 +107,9 @@ function App() {
         setShipId(message.team);
         shipIdRef.current = message.team;
         console.log("Ship ID", message.team);
-      } else if (message.type == "bomb") {
+      } else if (message.type == "bomb_update") {
         const position = new Vec2D(message.x, message.y);
-        bombQRef.current.push;
+        bombQRef.current.push(position);
       } else {
         console.log("Unknown message type", message);
       }
