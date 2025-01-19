@@ -10,7 +10,6 @@ import { useSearchParams } from "react-router";
 function App() {
   const [searchParams] = useSearchParams();
   const teamIdParam = searchParams.get("teamId");
-  console.log(teamIdParam)
 
   const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -151,9 +150,9 @@ function App() {
           <QRCodeSVG value={url} size={200} />
         </div>
 
-        <div className="mt-5">
+        {/* <div className="mt-5">
           <HealthBar yourHealth={100} opponentHealth={30} />
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -147,6 +147,9 @@ class Ship extends Entity {
   }
 
   draw(delta: number, context: CanvasRenderingContext2D): void {
+    if (!this.alive) {
+      return;
+    }
     if (this.hasBomb) {
       this.drawable = new BoatBombSprite();
     } else {
@@ -248,6 +251,11 @@ class Game {
     }));
   }
 
+  isColliding(position1: Vec2D, position2: Vec2D, radius1: number, radius2: number): boolean {
+    const distance = position1.subtract(position2).magnitude();
+    return distance <= radius1 + radius2;
+  }
+
   update(delta: number) {
     this.ships.forEach(ship => {
       ship.update(delta);
@@ -255,6 +263,15 @@ class Game {
 
     this.bombs.forEach(b => {
       b.update(delta);
+
+    // Check for collision if the bomb has exploded
+    if (b.hasExploded) {
+      this.ships.forEach(ship => {
+        if (ship.alive && this.isColliding(b.position, ship.position, 100, 100)) {
+          ship.alive = false;
+        }
+      });
+    }
     });
 
     // Decel
