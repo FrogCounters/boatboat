@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Game from "./game/Hmm";
 import HealthBar from "./game/HealthBar";
-import { WS_URL } from "./config";
+import { URL, WS_URL } from "./config";
 import SimplePeer from "simple-peer";
 import { Vec2D, Controller } from "./game/util";
 import { QRCodeSVG } from "qrcode.react";
@@ -136,6 +136,7 @@ function App() {
     };
   }, [ws, shipId]);
 
+  const url = `${URL}/join?shipId=${shipId}`;
   return (
     <div className="w-[95vw] m-auto mt-5 flex">
       <canvas
@@ -147,7 +148,7 @@ function App() {
       />
       <div className="m-[auto] flex flex-col items-center justify-center ml-3">
         <div className="box-border">
-          <QRCodeSVG value={shipId ? shipId : ""} size={200} />
+          <QRCodeSVG value={url} size={200} />
         </div>
 
         <div className="mt-5">
