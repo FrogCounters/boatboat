@@ -247,6 +247,11 @@ class Game {
     }));
   }
 
+  isColliding(position1: Vec2D, position2: Vec2D, radius1: number, radius2: number): boolean {
+    const distance = position1.subtract(position2).magnitude();
+    return distance <= radius1 + radius2;
+  }
+
   update(delta: number) {
     this.ships.forEach(ship => {
       ship.update(delta);
@@ -254,6 +259,16 @@ class Game {
 
     this.bombs.forEach(b => {
       b.update(delta);
+
+    // Check for collision if the bomb has exploded
+    if (b.hasExploded) {
+      this.ships.forEach(ship => {
+        if (ship.alive && this.isColliding(b.position, ship.position, 30, 30)) {
+          ship.alive = false;
+          console.log(`Ship at ${ship.position.x}, ${ship.position.y} destroyed by bomb!`);
+        }
+      });
+    }
     });
 
     // Decel
