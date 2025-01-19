@@ -147,6 +147,9 @@ class Ship extends Entity {
   }
 
   draw(delta: number, context: CanvasRenderingContext2D): void {
+    if (!this.alive) {
+      return;
+    }
     if (this.hasBomb) {
       this.drawable = new BoatBombSprite();
     } else {
@@ -264,9 +267,8 @@ class Game {
     // Check for collision if the bomb has exploded
     if (b.hasExploded) {
       this.ships.forEach(ship => {
-        if (ship.alive && this.isColliding(b.position, ship.position, 30, 30)) {
+        if (ship.alive && this.isColliding(b.position, ship.position, 100, 100)) {
           ship.alive = false;
-          console.log(`Ship at ${ship.position.x}, ${ship.position.y} destroyed by bomb!`);
         }
       });
     }

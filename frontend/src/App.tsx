@@ -10,7 +10,6 @@ import { useSearchParams } from "react-router";
 function App() {
   const [searchParams] = useSearchParams();
   const teamIdParam = searchParams.get("teamId");
-  console.log(teamIdParam)
 
   const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
