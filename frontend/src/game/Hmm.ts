@@ -50,6 +50,7 @@ class Ship extends Entity {
   hasBomb: boolean = true
   alive: boolean = true
   static readonly MAX_SPEED: number = 200
+  player: string | null = null
 
   constructor(
     position: Vec2D,
@@ -63,7 +64,20 @@ class Ship extends Entity {
 
   draw(delta: number, context: CanvasRenderingContext2D): void {
     super.draw(delta, context);
+
+    // Draw text at position
+    if (this.player) {
+      // Draw this.player above position
+      context.fillStyle = "black";
+      context.font = "12px Arial";
+      context.fillText(this.player, this.position.x, this.position.y - 30);
+    }
   }
+}
+
+class State {
+  a: boolean = false;
+  b: boolean = false;
 }
 
 const WIDTH = 1280;
@@ -77,6 +91,8 @@ class Game {
   controllers: Map<string, Controller> = new Map();
   playerToAlpha: Map<string, string> = new Map();
   playerToBoat: Map<string, number> = new Map();
+  playerToState: Map<string, State> = new Map();
+  alpha = "A";
 
   constructor(canvas: HTMLCanvasElement, controllers: Map<string, Controller>) {
     this.canvas = canvas;
@@ -85,9 +101,19 @@ class Game {
     this.controllers = controllers;
   }
 
+  getAlpha(playerId: string): string {
+    let alpha = this.playerToAlpha.get(playerId);
+    if (!alpha) {
+      alpha = this.alpha;
+      this.playerToAlpha.set(playerId, alpha);
+      this.alpha = String.fromCharCode(this.alpha.charCodeAt(0) + 1);
+    }
+    return alpha;
+  }
+
   init() {
     // Initialize 10 ships
-    for (let i = 0; i < 1; i++) {
+    for (let i = 0; i < 10; i++) {
       const position = new Vec2D(Math.random() * WIDTH, Math.random() * HEIGHT);
       this.ships.push(new Ship(position));
     }
@@ -129,19 +155,50 @@ class Game {
       ship.acceleration = ship.velocity.normalize().multiply(-40);
     }
 
-    // Controller
+    // Boats in use
     let inUse = new Set<number>();
     for (let [playerId, controller] of this.controllers) {
       if (!this.playerToBoat.has(playerId)) continue;
       const idx = this.playerToBoat.get(playerId)!;
+      inUse.add(idx);
+    }
+
+    // Controller
+    for (let [playerId, controller] of this.controllers) {
+      if (!this.playerToBoat.has(playerId)) continue;
+      const idx = this.playerToBoat.get(playerId)!;
       const ship = this.ships[idx];
+
+      // Movement
       if (controller.joystick.magnitude > 0) {
         ship.acceleration = new Vec2D(
           Math.cos(controller.joystick.angle),
           Math.sin(controller.joystick.angle)
         ).multiply(controller.joystick.magnitude * 100);
       }
-      inUse.add(idx);
+
+      // State
+      let state = this.playerToState.get(playerId);
+      if (!state) {
+        state = new State();
+        this.playerToState.set(playerId, state);
+      }
+      if (controller.a && !state?.a) {
+        for (let i = 1; i < 10; i++) {
+          let newIdx = (idx + i) % this.ships.length;
+          if (!inUse.has(newIdx)) {
+            this.playerToBoat.set(playerId, newIdx);
+            inUse.add(newIdx);
+            inUse.delete(idx);
+            this.ships[newIdx].player;
+            break;
+          }
+        }
+      }
+      if (controller.b && !state?.b) {
+      }
+      state.a = controller.a;
+      state.b = controller.b;
     }
 
     // Assign 
