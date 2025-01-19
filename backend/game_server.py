@@ -111,7 +111,7 @@ class Bullet:
 class GameState:
     def __init__(self):
         self.ships: Dict[str, Ship] = {}
-        self.bullets: Dict[str, Bullet] = {}
+        # self.bullets: Dict[str, Bullet] = {}
         self.connections: Dict[str, WebSocket] = {}
         
     def add_ship(self, ship_id: str) -> Ship:
@@ -133,7 +133,7 @@ class GameState:
             ship_id=ship_id,
             timestamp=bullet_data["timestamp"]
         )
-        self.bullets[bullet_id] = bullet
+        # self.bullets[bullet_id] = bullet
         return bullet
 
     def get_leaderboard(self) -> List[dict]:
@@ -175,15 +175,15 @@ async def broadcast_game_state():
                     }
                     for ship in game_state.ships.values()
                 ],
-                "bullets": [
-                    {
-                        "id": bullet.id,
-                        "position": bullet.position,
-                        "angle": bullet.angle,
-                        "timestamp": bullet.timestamp
-                    }
-                    for bullet in game_state.bullets.values()
-                ],
+                # "bullets": [
+                #     {
+                #         "id": bullet.id,
+                #         "position": bullet.position,
+                #         "angle": bullet.angle,
+                #         "timestamp": bullet.timestamp
+                #     }
+                #     for bullet in game_state.bullets.values()
+                # ],
                 "leaderboard": game_state.get_leaderboard()
             }
             
@@ -374,7 +374,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if closest_ship:
                     closest_ship.health -= CANNONT_HIT_DMG
                     game_state.ships[ship_id].score += 1
-                    del game_state.bullets[bullet.id]
+                    # del game_state.bullets[bullet.id]
 
 
             elif message["type"] == "player_communication":
