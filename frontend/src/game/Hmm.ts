@@ -10,6 +10,10 @@ import MineSrc from "../assets/sprites/Mines/Mine0.png"
 const BombImg = new Image();
 BombImg.src = MineSrc;
 
+import MineExplosionSrc from "../assets/sprites/Mines/MineExplosion.png"
+const BombExplodeImg = new Image();
+BombExplodeImg.src = MineExplosionSrc;
+
 interface Drawable {
   draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void;
 }
@@ -78,17 +82,50 @@ class BombSprite implements Drawable {
   }
 }
 
+class BombExplodeSprite implements Drawable {
+  draw(position: Vec2D, rotation: number, delta: number, context: CanvasRenderingContext2D): void {
+    context.save();
+    context.translate(position.x, position.y);
+    context.rotate(rotation);
+    context.drawImage(BombExplodeImg, -BombExplodeImg.width / 2, -BombExplodeImg.height / 2);
+    context.restore();
+  }
+}
+
 class Bomb extends Entity {
+  isSeen: boolean = true;
+  hasExploded: boolean = false;
+  lifetime: number = 3;
+  disappeartime: number = 5;
+  elapsed: number = 0; 
+
   constructor(position: Vec2D) {
     super(position, undefined, undefined, undefined, new BoatBombSprite())
   }
 
   update(delta: number) {
     super.update(delta);
+    this.elapsed += delta;
+
+    if (this.elapsed >= this.lifetime && !this.hasExploded) {
+      this.hasExploded = true;
+    }
+
+    if (this.elapsed >= this.disappeartime) {
+      this.isSeen = false;
+    }
   }
 
   draw(delta: number, context: CanvasRenderingContext2D): void {
-    this.drawable = new BombSprite();
+    if (!this.isSeen) {
+      return;
+    }
+    
+    if (this.hasExploded) {
+      this.drawable = new BombExplodeSprite();
+    } else {
+      this.drawable = new BombSprite();
+    }
     super.draw(delta, context);
   }
 }
@@ -203,6 +240,10 @@ class Game {
       ship.update(delta);
     });
 
+    this.bombs.forEach(b => {
+      b.update(delta);
+    });
+
     // Decel
     for (let ship of this.ships) {
       ship.acceleration = ship.velocity.multiply(-1);
@@ -251,10 +292,7 @@ class Game {
       }
       if (controller.b && !state?.b) {
         //drop bomb
-        console.log("bomb drop", controller)
         this.bombs.push(new Bomb(new Vec2D(ship.position.x, ship.position.y)))
-        // new Bomb(new Vec2D(ship.position.x, ship.position.y))
-        
       }
       state.a = controller.a;
       state.b = controller.b;
