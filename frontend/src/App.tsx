@@ -4,7 +4,8 @@ import HealthBar from "./game/HealthBar";
 import Leaderboard from "./game/Leaderboard";
 import { WS_URL } from "./config";
 import SimplePeer from "simple-peer";
-import { Vec2D } from "./game/util";
+import { Vec2D, Controller } from "./game/util";
+import { QRCodeSVG } from "qrcode.react";
 
 const users = [
   { rank: 1, name: "Alice", uid: "1", point: 100 },
@@ -15,21 +16,16 @@ const users = [
   { rank: 6, name: "Flower", uid: "6", point: 70 },
 ];
 
-type Player = {
-  peer: SimplePeer.Instance;
-  joystick: Vec2D;
-  a: boolean;
-  b: boolean;
-};
-
 function App() {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const playersRef = useRef<{ [key: string]: Player }>({});
+  const playersRef = useRef<Map<string, Controller>>(new Map());
   const players = playersRef.current!;
+  const [shipId, setShipId] = useState<string | null>(null);
+  const shipIdRef = useRef<string | null>(null);
 
-  const uid = "6";
+  const uid = "6"; // Current player's unique ID
 
   useEffect(() => {
     const ws_ = new WebSocket(`${WS_URL}/ws`);
@@ -42,7 +38,7 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.type === "signal") {
         const playerId = message.player_id;
-        players[playerId].peer.signal(message.data)
+        players.get(playerId)?.peer.signal(message.data);
       } else if (message.type == "ready") {
         const playerId = message.player_id;
         const peer = new SimplePeer({
@@ -54,25 +50,48 @@ function App() {
             ],
           },
         });
-        peer.on("signal", (data) => {
-          ws_.send(JSON.stringify({ type: "player_communication", player_id: playerId, data}));
-        });
-        peer.on("connect", () => {
-          console.log("Connected to new controller", playerId);
-        })
-        peer.on("data", (data) => {
-          console.log("Data from peer", playerId, data);
-        });
-        peer.on("disconnect", () => {
-          peer.destroy();
-          delete players[playerId];
-        });
-        players[playerId] = {
+        const player = {
           peer,
-          joystick: new Vec2D(0, 0),
+          joystick: { magnitude: 0, angle: 0 },
           a: false,
           b: false,
         };
+        peer.on("signal", (data) => {
+          ws_.send(
+            JSON.stringify({
+              type: "player_communication",
+              player_id: playerId,
+              data,
+            })
+          );
+        });
+        peer.on("connect", () => {
+          console.log("Connected to new controller", playerId);
+          gameRef.current?.initPlayer(shipIdRef.current!, playerId);
+        });
+        peer.on("data", (data) => {
+          const message = JSON.parse(data);
+          // console.log("Data from peer", playerId, message);
+          if (message.type == "a") {
+            player.a = message.data;
+          } else if (message.type == "b") {
+            player.b = message.data;
+          } else if (message.type == "joystick") {
+            player.joystick.magnitude = message.magnitude;
+            player.joystick.angle = message.angle;
+          } else {
+            console.log("unknown webrtc message from", playerId);
+          }
+        });
+        peer.on("disconnect", () => {
+          peer.destroy();
+          players.delete(playerId);
+        });
+        players.set(playerId, player);
+      } else if (message.type == "init") {
+        setShipId(message.ship_id);
+        shipIdRef.current = message.ship_id;
+        console.log("Ship ID", message.ship_id);
       } else {
         console.log("Unknown message type", message);
       }
@@ -86,43 +105,38 @@ function App() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (!shipId) return;
 
-    const game = new Game(canvas);
+    const game = new Game(canvas, shipId, players);
     gameRef.current = game;
 
-    const shipId = 1;
-    const shipPosition = { x: 200, y: 200 };
+    const shipPosition = new Vec2D(1000, 200);
 
-    game.initShip(shipId, shipPosition);
+    game.gameStart(shipPosition);
 
-    for (let i = 0; i < 50; i++) {
-      game.initObstacle({
-        x: Math.random() * 1280,
-        y: Math.random() * 720,
-      });
-    }
-    game.initPlayer(shipId, uid);
-
-    game.centerMapOnShip(shipId);
-
-    game.draw();
-  }, []);
+    return () => {
+      game.stopGame();
+    };
+  }, [shipId]);
 
   return (
     <div className="w-[90vw] m-auto">
       <div className="justify-between flex my-5">
-        <div className="box-border h-32 w-32 p-4 border-4">QR here</div>
+        <div className="box-border h-32 w-32">
+          <QRCodeSVG value={shipId ? shipId : ""} />
+        </div>
         <HealthBar health={20} />
       </div>
-      <div className="relative mt-5 relative">
+      <div className="relative mt-5 w-[100%]">
         <canvas
           ref={canvasRef}
-          className="bg-blue-200 w-full"
+          className="bg-blue-200"
           width={1280}
           height={720}
+          style={{ width: "auto", height: "600px" }}
         />
         <div className="absolute top-1 right-1 opacity-70 bg-transparent">
-          <Leaderboard users={users} uid={uid} />
+          {/*<Leaderboard users={users} uid={uid} />*/}
         </div>
       </div>
     </div>
