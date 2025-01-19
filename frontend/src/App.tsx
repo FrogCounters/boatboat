@@ -1,20 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import Game from "./game/Game";
 import HealthBar from "./game/HealthBar";
-import Leaderboard from "./game/Leaderboard";
 import { WS_URL } from "./config";
 import SimplePeer from "simple-peer";
 import { Vec2D, Controller } from "./game/util";
 import { QRCodeSVG } from "qrcode.react";
-
-const users = [
-  { rank: 1, name: "Alice", uid: "1", point: 100 },
-  { rank: 2, name: "Bob", uid: "2", point: 90 },
-  { rank: 3, name: "Charlie", uid: "3", point: 80 },
-  { rank: 4, name: "Donkey", uid: "4", point: 70 },
-  { rank: 5, name: "Elephant", uid: "5", point: 75 },
-  { rank: 6, name: "Flower", uid: "6", point: 70 },
-];
 
 function App() {
   const [ws, setWs] = useState<WebSocket | null>(null);
@@ -24,8 +14,6 @@ function App() {
   const players = playersRef.current!;
   const [shipId, setShipId] = useState<string | null>(null);
   const shipIdRef = useRef<string | null>(null);
-
-  const uid = "6"; // Current player's unique ID
 
   useEffect(() => {
     const ws_ = new WebSocket(`${WS_URL}/ws`);
@@ -120,23 +108,21 @@ function App() {
   }, [shipId]);
 
   return (
-    <div className="w-[90vw] m-auto">
-      <div className="justify-between flex my-5">
-        <div className="box-border h-32 w-32">
-          <QRCodeSVG value={shipId ? shipId : ""} />
+    <div className="w-[95vw] m-auto mt-5 flex">
+      <canvas
+        ref={canvasRef}
+        className="bg-blue-200"
+        width={1280}
+        height={720}
+        style={{ width: "auto", height: "90vh" }}
+      />
+      <div className="m-[auto] flex flex-col items-center justify-center ml-3">
+        <div className="box-border">
+          <QRCodeSVG value={shipId ? shipId : ""} size={200} />
         </div>
-        <HealthBar health={20} />
-      </div>
-      <div className="relative mt-5 w-[100%]">
-        <canvas
-          ref={canvasRef}
-          className="bg-blue-200"
-          width={1280}
-          height={720}
-          style={{ width: "auto", height: "600px" }}
-        />
-        <div className="absolute top-1 right-1 opacity-70 bg-transparent">
-          {/*<Leaderboard users={users} uid={uid} />*/}
+
+        <div className="mt-5">
+          <HealthBar yourHealth={100} opponentHealth={30} />
         </div>
       </div>
     </div>
