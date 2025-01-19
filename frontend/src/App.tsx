@@ -16,7 +16,7 @@ function App() {
   const shipIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const ws_ = new WebSocket(`${WS_URL}/ws`);
+    const ws_ = new WebSocket(`${WS_URL}/ws?team=team_a`);
     ws_.onopen = () => {
       console.log("Connected to server");
       setWs(ws_);
@@ -77,9 +77,9 @@ function App() {
         });
         players.set(playerId, player);
       } else if (message.type == "init") {
-        setShipId(message.ship_id);
-        shipIdRef.current = message.ship_id;
-        console.log("Ship ID", message.ship_id);
+        setShipId(message.team);
+        shipIdRef.current = message.team;
+        console.log("Ship ID", message.team);
       } else {
         console.log("Unknown message type", message);
       }

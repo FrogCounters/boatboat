@@ -108,7 +108,7 @@ const Join = () => {
 
   useEffect(() => {
     if (!shipId) return;
-    const ws_ = new WebSocket(`${WS_URL}/joinship?ship_id=${shipId}`);
+    const ws_ = new WebSocket(`${WS_URL}/joingame?team=${shipId}`);
     const peer = new SimplePeer({
       initiator: false,
       config: {
