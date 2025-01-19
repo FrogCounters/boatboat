@@ -13,7 +13,6 @@ from config import *
 
 app = FastAPI()
 
-# TODO: Add a free position and change move_player logic subsequently to allow infinite number of players on board
 class Position(Enum):
     HELM = "helm"
     CANNON_LEFT_1 = "cannon_left_1"
@@ -111,7 +110,7 @@ class Bullet:
 class GameState:
     def __init__(self):
         self.ships: Dict[str, Ship] = {}
-        self.bullets: Dict[str, Bullet] = {}
+        # self.bullets: Dict[str, Bullet] = {}
         self.connections: Dict[str, WebSocket] = {}
         
     def add_ship(self, ship_id: str) -> Ship:
@@ -133,7 +132,7 @@ class GameState:
             ship_id=ship_id,
             timestamp=bullet_data["timestamp"]
         )
-        self.bullets[bullet_id] = bullet
+        # self.bullets[bullet_id] = bullet
         return bullet
 
     def get_leaderboard(self) -> List[dict]:
@@ -175,15 +174,15 @@ async def broadcast_game_state():
                     }
                     for ship in game_state.ships.values()
                 ],
-                "bullets": [
-                    {
-                        "id": bullet.id,
-                        "position": bullet.position,
-                        "angle": bullet.angle,
-                        "timestamp": bullet.timestamp
-                    }
-                    for bullet in game_state.bullets.values()
-                ],
+                # "bullets": [
+                #     {
+                #         "id": bullet.id,
+                #         "position": bullet.position,
+                #         "angle": bullet.angle,
+                #         "timestamp": bullet.timestamp
+                #     }
+                #     for bullet in game_state.bullets.values()
+                # ],
                 "leaderboard": game_state.get_leaderboard()
             }
             
@@ -193,7 +192,7 @@ async def broadcast_game_state():
                     await connection.send_text(json.dumps(message))
                 except:
                     pass
-        await asyncio.sleep(10)  # TODO: change this 5ms update interval
+        await asyncio.sleep(GAME_UPDATE_SECONDS)
 
 @app.on_event("startup")
 async def startup_event():
@@ -366,7 +365,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif message["type"] == "bullet_update":
                 bullet = game_state.add_bullet(message["data"], ship_id)
-                radius = SHIP_HITBOX_RADIUS_UNITS #TODO: Tmp Variable here
+                radius = SHIP_HITBOX_RADIUS_UNITS
                 
                 # Check for collisions (simplified for now)
                 closest_ship = detect_closest_hit(bullet, game_state.ships, radius)
@@ -374,7 +373,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if closest_ship:
                     closest_ship.health -= CANNONT_HIT_DMG
                     game_state.ships[ship_id].score += 1
-                    del game_state.bullets[bullet.id]
+                    # del game_state.bullets[bullet.id]
 
 
             elif message["type"] == "player_communication":

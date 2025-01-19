@@ -1,13 +1,41 @@
-const HealthBar: React.FC<{ health: number }> = ({ health }) => {
-  return (
-    <div className="relative w-full h-6 rounded-full bg-gray-600">
-      <div
-        className="h-6 rounded-full bg-red-500 transition-all"
-        style={{ width: `${health}%` }}
-      ></div>
+import ducky from "../assets/ducky.png";
+import pirate from "../assets/pirate.png";
 
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-sm font-semibold text-gray-100">{health}%</span>
+const HealthBar: React.FC<{ yourHealth: number; opponentHealth: number }> = ({
+  yourHealth,
+  opponentHealth,
+}) => {
+  const yourHearts = Array(Math.floor(yourHealth / 10)).fill(ducky);
+  const opponentsHearts = Array(Math.floor(opponentHealth / 10)).fill(pirate);
+
+  return (
+    <div>
+      <div>
+        <span className="font-bold mb-1 block">Your Health</span>
+        <div className="flex">
+          {yourHearts.map((yourHeart, index) => (
+            <img
+              key={index}
+              src={yourHeart}
+              alt={`heart ${index + 1}`}
+              style={{ width: "30px", height: "30px", marginRight: "5px" }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="font-bold mb-1 block">Opponent's Health</span>
+        <div className="flex">
+          {opponentsHearts.map((yourHeart, index) => (
+            <img
+              key={index}
+              src={yourHeart}
+              alt={`heart ${index + 1}`}
+              style={{ width: "30px", height: "30px", marginRight: "5px" }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
