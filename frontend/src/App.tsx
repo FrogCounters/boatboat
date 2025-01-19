@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Game from "./game/Game";
+import Game from "./game/Hmm";
 import HealthBar from "./game/HealthBar";
 import Leaderboard from "./game/Leaderboard";
 import { WS_URL } from "./config";
@@ -67,7 +67,7 @@ function App() {
         });
         peer.on("connect", () => {
           console.log("Connected to new controller", playerId);
-          gameRef.current?.initPlayer(shipIdRef.current!, playerId);
+          // gameRef.current?.initPlayer(shipIdRef.current!, playerId);
         });
         peer.on("data", (data) => {
           const message = JSON.parse(data);
@@ -107,15 +107,13 @@ function App() {
     if (!canvas) return;
     if (!shipId) return;
 
-    const game = new Game(canvas, shipId, players);
+    const game = new Game(canvas, players);
     gameRef.current = game;
-
-    const shipPosition = new Vec2D(1000, 200);
-
-    game.gameStart(shipPosition);
+    game.init();
+    game.start();
 
     return () => {
-      game.stopGame();
+      game.stop();
     };
   }, [shipId]);
 

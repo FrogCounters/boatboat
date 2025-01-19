@@ -70,15 +70,15 @@ class Ship {
       return;
     }
 
-    const width = 420;
-    const height = 581;
+    const width = 581;
+    const height = 420;
 
     const mappedX = this.position.x - mapCoordinates.x;
     const mappedY = this.position.y - mapCoordinates.y;
 
     context.save();
     context.translate(mappedX, mappedY);
-    context.rotate(3.1415+this.velocity.angle());
+    context.rotate(this.velocity.angle());
     context.drawImage(BoatImg, -width / 2, -height / 2);
     context.restore();
 
