@@ -19,9 +19,10 @@ function App() {
   const players = playersRef.current!;
   const [shipId, setShipId] = useState<string | null>(null);
   const shipIdRef = useRef<string | null>(null);
+  const bombQRef = useRef<Array<Vec2D>>([]);
 
   useEffect(() => {
-    const ws_ = new WebSocket(`${WS_URL}/ws?team=team_a`);
+    const ws_ = new WebSocket(`${WS_URL}/ws?team=${teamIdParam}`);
     ws_.onopen = () => {
       console.log("Connected to server");
       setWs(ws_);
@@ -105,6 +106,9 @@ function App() {
         setShipId(message.team);
         shipIdRef.current = message.team;
         console.log("Ship ID", message.team);
+      } else if (message.type == "bomb") {
+        const position = new Vec2D(message.x, message.y);
+        bombQRef.current.push;
       } else {
         console.log("Unknown message type", message);
       }
@@ -119,8 +123,9 @@ function App() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (!shipId) return;
+    if (!ws) return;
 
-    const game = new Game(canvas, players);
+    const game = new Game(canvas, players, ws, bombQRef.current);
     gameRef.current = game;
     game.init();
     game.start();
@@ -128,7 +133,7 @@ function App() {
     return () => {
       game.stop();
     };
-  }, [shipId]);
+  }, [ws, shipId]);
 
   return (
     <div className="w-[95vw] m-auto mt-5 flex">

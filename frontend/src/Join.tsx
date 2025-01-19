@@ -208,15 +208,16 @@ const Join = () => {
           <Button
             btnUpdate={(isButtonPressed) => {
               if (isConnected && peer != null) {
+                /*
                 peer.send(
                   JSON.stringify({
                     type: "b",
                     data: isButtonPressed,
                   })
-                );
+                );*/
                 wsRef.current?.send(
                   JSON.stringify({
-                    type: "a",
+                    type: "b",
                     data: isButtonPressed,
                   })
                 );
