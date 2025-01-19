@@ -1,6 +1,6 @@
 import { Vec2D, Controller } from "./util";
 import Player from "./Player";
-import BoatSrc from "../assets/sprites/boat.png";
+import BoatSrc from "../assets/sprites/Boat.png";
 const BoatImg = new Image();
 BoatImg.src = BoatSrc;
 
