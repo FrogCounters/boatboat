@@ -5,8 +5,13 @@ import { WS_URL } from "./config";
 import SimplePeer from "simple-peer";
 import { Vec2D, Controller } from "./game/util";
 import { QRCodeSVG } from "qrcode.react";
+import { useSearchParams } from "react-router";
 
 function App() {
+  const [searchParams] = useSearchParams();
+  const teamIdParam = searchParams.get("teamId");
+  console.log(teamIdParam)
+
   const [ws, setWs] = useState<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
