@@ -149,9 +149,9 @@ function App() {
           <QRCodeSVG value={shipId ? shipId : ""} size={200} />
         </div>
 
-        <div className="mt-5">
+        {/* <div className="mt-5">
           <HealthBar yourHealth={100} opponentHealth={30} />
-        </div>
+        </div> */}
       </div>
     </div>
   );
