@@ -105,6 +105,7 @@ const Join = () => {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!shipId) return;
@@ -120,10 +121,10 @@ const Join = () => {
     });
     peer.on("signal", (data) => {
       ws_.send(JSON.stringify({ type: "signal", data }));
+      setIsConnected(true);
     });
     peer.on("connect", () => {
       console.log("Connected to peer");
-      setIsConnected(true);
     });
     peer.on("close", () => {
       peer.destroy();
@@ -133,8 +134,10 @@ const Join = () => {
     setPeer(peer);
 
     ws_.onopen = () => {
+      wsRef.current = ws_;
       setWs(ws_);
       ws_.send(JSON.stringify({ type: "ready" }));
+      setIsConnected(true);
     };
     ws_.onmessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data);
@@ -161,7 +164,16 @@ const Join = () => {
             joyUpdate={(magnitude, angle) => {
               if (isConnected && peer != null) {
                 // console.log("joyUpdate", magnitude, angle, isConnected, peer);
-                peer.send(
+                /*
+                peer?.send(
+                  JSON.stringify({
+                    type: "joystick",
+                    magnitude,
+                    angle,
+                  })
+                );
+                */
+                ws?.send(
                   JSON.stringify({
                     type: "joystick",
                     magnitude,
@@ -177,7 +189,14 @@ const Join = () => {
             btnUpdate={(isButtonPressed) => {
               if (isConnected && peer != null) {
                 // console.log("isConnected", isConnected);
+                /*
                 peer.send(
+                  JSON.stringify({
+                    type: "a",
+                    data: isButtonPressed,
+                  })
+                );*/
+                wsRef.current?.send(
                   JSON.stringify({
                     type: "a",
                     data: isButtonPressed,
@@ -192,6 +211,12 @@ const Join = () => {
                 peer.send(
                   JSON.stringify({
                     type: "b",
+                    data: isButtonPressed,
+                  })
+                );
+                wsRef.current?.send(
+                  JSON.stringify({
+                    type: "a",
                     data: isButtonPressed,
                   })
                 );

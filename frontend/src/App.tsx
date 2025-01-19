@@ -27,8 +27,27 @@ function App() {
       if (message.type === "signal") {
         const playerId = message.player_id;
         players.get(playerId)?.peer.signal(message.data);
+      } else if (message.type == "a") {
+        const player = players.get(message.player_id)!;
+        player.a = message.data;
+      } else if (message.type == "b") {
+        const player = players.get(message.player_id)!;
+        player.b = message.data;
+      } else if (message.type == "joystick") {
+        const player = players.get(message.player_id)!;
+        player.joystick.magnitude = message.magnitude;
+        player.joystick.angle = message.angle;
       } else if (message.type == "ready") {
         const playerId = message.player_id;
+        const player = {
+          peer: new SimplePeer({}),
+          joystick: { magnitude: 0, angle: 0 },
+          a: false,
+          b: false,
+        };
+        players.set(playerId, player);
+        return;
+        /*
         const peer = new SimplePeer({
           initiator: true,
           config: {
@@ -76,6 +95,7 @@ function App() {
           players.delete(playerId);
         });
         players.set(playerId, player);
+        */
       } else if (message.type == "init") {
         setShipId(message.team);
         shipIdRef.current = message.team;
