@@ -13,7 +13,6 @@ from config import *
 
 app = FastAPI()
 
-# TODO: Add a free position and change move_player logic subsequently to allow infinite number of players on board
 class Position(Enum):
     HELM = "helm"
     CANNON_LEFT_1 = "cannon_left_1"
@@ -193,7 +192,7 @@ async def broadcast_game_state():
                     await connection.send_text(json.dumps(message))
                 except:
                     pass
-        await asyncio.sleep(10)  # TODO: change this 5ms update interval
+        await asyncio.sleep(GAME_UPDATE_SECONDS)
 
 @app.on_event("startup")
 async def startup_event():
@@ -366,7 +365,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif message["type"] == "bullet_update":
                 bullet = game_state.add_bullet(message["data"], ship_id)
-                radius = SHIP_HITBOX_RADIUS_UNITS #TODO: Tmp Variable here
+                radius = SHIP_HITBOX_RADIUS_UNITS
                 
                 # Check for collisions (simplified for now)
                 closest_ship = detect_closest_hit(bullet, game_state.ships, radius)
